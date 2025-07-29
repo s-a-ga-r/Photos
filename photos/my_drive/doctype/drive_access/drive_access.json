@@ -1,0 +1,66 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:user",
+ "creation": "2025-04-10 20:41:56.686406",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "user",
+  "view_only",
+  "upload_only",
+  "all"
+ ],
+ "fields": [
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "label": "User",
+   "options": "User",
+   "unique": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "view_only",
+   "fieldtype": "Check",
+   "label": "View Only\t"
+  },
+  {
+   "default": "0",
+   "fieldname": "upload_only",
+   "fieldtype": "Check",
+   "label": "Upload Only"
+  },
+  {
+   "default": "0",
+   "fieldname": "all",
+   "fieldtype": "Check",
+   "label": "All"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-07-19 16:06:58.882974",
+ "modified_by": "Administrator",
+ "module": "My Drive",
+ "name": "Drive Access",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

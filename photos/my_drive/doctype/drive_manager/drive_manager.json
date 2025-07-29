@@ -1,0 +1,100 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-04-09 23:55:57.876362",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "file_name",
+  "attached_to_name",
+  "is_folder",
+  "column_break_kfpd",
+  "folder",
+  "created_by",
+  "size",
+  "file_access_control_section",
+  "user_permissions"
+ ],
+ "fields": [
+  {
+   "fieldname": "file_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "File Name"
+  },
+  {
+   "fieldname": "attached_to_name",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Attached To Name",
+   "options": "File"
+  },
+  {
+   "fieldname": "column_break_kfpd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "folder",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Folder"
+  },
+  {
+   "fieldname": "created_by",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Created By"
+  },
+  {
+   "fieldname": "file_access_control_section",
+   "fieldtype": "Section Break",
+   "label": "File Access Control"
+  },
+  {
+   "fieldname": "user_permissions",
+   "fieldtype": "Table",
+   "label": "User Permissions",
+   "options": "File Access Control"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_folder",
+   "fieldtype": "Check",
+   "label": "is_folder"
+  },
+  {
+   "fetch_from": "attached_to_name.file_size",
+   "fieldname": "size",
+   "fieldtype": "Read Only",
+   "label": "Size",
+   "length": 20,
+   "options": "File Size"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-06-11 10:57:11.216364",
+ "modified_by": "Administrator",
+ "module": "My Drive",
+ "name": "Drive Manager",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "file_name"
+}

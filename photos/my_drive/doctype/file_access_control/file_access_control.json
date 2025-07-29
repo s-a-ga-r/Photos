@@ -1,0 +1,88 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-04-09 16:05:04.351190",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "for_user",
+  "read",
+  "write",
+  "delete_file",
+  "uplaod",
+  "download",
+  "share",
+  "manage"
+ ],
+ "fields": [
+  {
+   "fieldname": "for_user",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "For User",
+   "options": "User"
+  },
+  {
+   "default": "0",
+   "fieldname": "read",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Read"
+  },
+  {
+   "default": "0",
+   "fieldname": "write",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Write"
+  },
+  {
+   "default": "0",
+   "fieldname": "delete_file",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Delete"
+  },
+  {
+   "default": "0",
+   "fieldname": "uplaod",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Uplaod"
+  },
+  {
+   "default": "0",
+   "fieldname": "download",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Download"
+  },
+  {
+   "default": "0",
+   "fieldname": "share",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Share"
+  },
+  {
+   "default": "0",
+   "fieldname": "manage",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Manage"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-04-14 10:41:35.230757",
+ "modified_by": "Administrator",
+ "module": "My Drive",
+ "name": "File Access Control",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

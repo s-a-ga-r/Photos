@@ -1,0 +1,81 @@
+{
+ "actions": [],
+ "creation": "2020-11-03 11:15:21.725820",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "preview",
+  "photo",
+  "is_processed",
+  "number_of_times_processed",
+  "people",
+  "objects"
+ ],
+ "fields": [
+  {
+   "fieldname": "photo",
+   "fieldtype": "Link",
+   "label": "Photo",
+   "options": "File",
+   "set_only_once": 1,
+   "unique": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "is_processed",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Is Processed"
+  },
+  {
+   "default": "0",
+   "fieldname": "number_of_times_processed",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Number of times Processed"
+  },
+  {
+   "fieldname": "people",
+   "fieldtype": "Table",
+   "label": "People",
+   "options": "ROI Person"
+  },
+  {
+   "fieldname": "objects",
+   "fieldtype": "Table",
+   "label": "Objects",
+   "options": "ROI Object"
+  },
+  {
+   "fieldname": "preview",
+   "fieldtype": "HTML",
+   "label": "Preview",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2020-11-15 16:10:39.247669",
+ "modified_by": "Administrator",
+ "module": "Photos",
+ "name": "Photo",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

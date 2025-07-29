@@ -1,0 +1,110 @@
+{
+ "charts": [],
+ "content": "[{\"id\":\"97GERZ85rh\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Gallery\",\"col\":3}},{\"id\":\"FlUa8aJIVL\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Photos\",\"col\":3}},{\"id\":\"Ol7eMVGDI6\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"People\",\"col\":3}},{\"id\":\"P3oLcRlBL_\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Persons\",\"col\":3}},{\"id\":\"Tx_ZiE9rx9\",\"type\":\"card\",\"data\":{\"card_name\":\"Permissions\",\"col\":3}},{\"id\":\"D3FYCRkTZh\",\"type\":\"card\",\"data\":{\"card_name\":\"Logs\",\"col\":3}}]",
+ "creation": "2020-05-23 19:38:03.299510",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "hide_custom": 0,
+ "icon": "scan",
+ "idx": 0,
+ "is_hidden": 0,
+ "label": "Photos",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Permissions",
+   "link_count": 2,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Drive Manager",
+   "link_count": 0,
+   "link_to": "Drive Manager",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Drive Access",
+   "link_count": 0,
+   "link_to": "Drive Access",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Logs",
+   "link_count": 1,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Shared files",
+   "link_count": 0,
+   "link_to": "Shared Files",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2025-07-28 11:57:00.513051",
+ "modified_by": "Administrator",
+ "module": "Photos",
+ "name": "Photos",
+ "number_cards": [],
+ "owner": "Administrator",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 0.0,
+ "shortcuts": [
+  {
+   "color": "Green",
+   "doc_view": "List",
+   "format": "{} Total",
+   "label": "Persons",
+   "link_to": "Person",
+   "stats_filter": "[[\"Person\",\"user\",\"like\",\"%@%\",false]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Blue",
+   "doc_view": "List",
+   "format": "{} Matched Faces",
+   "label": "People",
+   "link_to": "ROI",
+   "stats_filter": "[[\"ROI\",\"person\",\"is\",\"set\",false]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Orange",
+   "doc_view": "List",
+   "format": "{} Processed",
+   "label": "Photos",
+   "link_to": "Photo",
+   "stats_filter": "[[\"Photo\",\"is_processed\",\"=\",1,false]]",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "Gallery",
+   "link_to": "my-drive",
+   "type": "Page"
+  }
+ ],
+ "title": "Photos"
+}

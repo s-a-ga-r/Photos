@@ -1,0 +1,87 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:MYDF-{DD}-{MM}-{YY}-{#}",
+ "creation": "2025-06-10 15:06:07.875743",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "drive_id",
+  "shared_by",
+  "file_name",
+  "file_id",
+  "size",
+  "is_folder",
+  "members"
+ ],
+ "fields": [
+  {
+   "fetch_from": "drive_id.file_name",
+   "fieldname": "file_name",
+   "fieldtype": "Data",
+   "label": "File Name",
+   "unique": 1
+  },
+  {
+   "fetch_from": "drive_id.size",
+   "fieldname": "size",
+   "fieldtype": "Data",
+   "label": "Size"
+  },
+  {
+   "description": "Shared Members",
+   "fieldname": "members",
+   "fieldtype": "Small Text",
+   "label": "Members"
+  },
+  {
+   "fetch_from": "drive_id.attached_to_name",
+   "fieldname": "file_id",
+   "fieldtype": "Read Only",
+   "label": "file_id"
+  },
+  {
+   "fieldname": "drive_id",
+   "fieldtype": "Link",
+   "label": "Drive ID",
+   "options": "Drive Manager"
+  },
+  {
+   "fieldname": "shared_by",
+   "fieldtype": "Link",
+   "label": "Shared By",
+   "options": "User"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_folder",
+   "fieldtype": "Check",
+   "label": "is_folder"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-06-26 12:47:59.980541",
+ "modified_by": "Administrator",
+ "module": "My Drive",
+ "name": "Shared Files",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

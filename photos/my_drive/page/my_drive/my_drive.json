@@ -1,0 +1,30 @@
+{
+ "content": null,
+ "creation": "2025-04-09 14:06:32.407071",
+ "docstatus": 0,
+ "doctype": "Page",
+ "icon": "file",
+ "idx": 0,
+ "modified": "2025-05-05 12:45:39.430298",
+ "modified_by": "Administrator",
+ "module": "My Drive",
+ "name": "my-drive",
+ "owner": "Administrator",
+ "page_name": "my-drive",
+ "roles": [
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "Drive User"
+  },
+  {
+   "role": "Drive Admin"
+  }
+ ],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0,
+ "title": "My Drive"
+}

@@ -1,0 +1,101 @@
+<div class="container">
+    <div class="row">
+        <div class="col-md-3">
+            <div class="ibox float-e-margins">
+                
+                <div class="ibox-content">
+                    <div class="file-manager">
+                        <div class="resume-user">
+                            <!-- <i class="mdi mdi-account text-white"></i> -->
+                            <img class="img-profile img-circle img-responsive center-block" src="https://t4.ftcdn.net/jpg/02/29/75/83/360_F_229758328_7x8jwCwjtBMmC6rgFzLFhZoEpLobB6L8.jpg" alt="">
+                        </div>
+                        <div class="user-info">
+                            <ul class="meta list list-unstyled">
+                                <li class="name">{{user_details.first_name}} {{user_details.last_name}}
+                                    <label class="label label-info">{{user_details.designation}}</label>
+                                </li>
+                                <li class="activity"><small>Last logged in: <br>Today at 2:18pm</small></li>
+                            </ul>
+                        </div>
+                        <ul class="folder-list" id="folder-list"  style="padding: 0"><li></li></ul>
+                      
+                        <h5> <i class="fa fa-archive"></i> Folders</h5>
+                         <ul class="folder-list" id="folder-list"  style="padding: 0; margin-left: 20px;">
+                            {% for folder in folders %}
+                            {% if folder.is_folder %}
+                            <li>
+                                <a href="#" class="open-folder" data-folder-name="{{ folder.filename }}">
+                                    <i class="fa fa-folder"></i> {{ folder.file_name }}
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% endfor %}
+                        </ul>
+                        <ul class="folder-list" id="folder-list"  style="padding: 0"><li></li></ul>
+
+                       
+                        <!-- <ul class="folder-list" style="padding: 0">
+                            <li><a href=""><i class="fa fa-folder"></i> Files</a></li>
+                            <li><a href=""><i class="fa fa-folder"></i> Pictures</a></li>
+                            <li><a href=""><i class="fa fa-folder"></i> Web pages</a></li>
+                            <li><a href=""><i class="fa fa-folder"></i> Illustrations</a></li>
+                            <li><a href=""><i class="fa fa-folder"></i> Films</a></li>
+                            <li><a href=""><i class="fa fa-folder"></i> Books</a></li>
+                        </ul> -->
+                        <h5 class="shared-file"><i class="fa fa-share-alt"></i> <a href="/shared.html" class="open-shared-files"> shared</a></h5>
+                        
+                         <ul class="folder-list" id="folder-list"  style="padding: 0"><li></li></ul>
+
+                        <h5 class="shared-file"><i class="fa fa-envelope"></i> <a href="#" class="open-shared-files"> Notifications</a></h5>
+                        <ul class="folder-list" id="folder-list"  style="padding: 0"><li></li></ul>
+                        <h5 class="tag-title">Tags</h5>
+                        <ul class="tag-list" style="padding: 0">
+                            <li><a href="">Family</a></li>
+                            <li><a href="">Work</a></li>
+                            <li><a href="">Home</a></li>
+                            <li><a href="">Children</a></li>
+                            <li><a href="">Holidays</a></li>
+                            <li><a href="">Music</a></li>
+                            <li><a href="">Photography</a></li>
+                            <li><a href="">Film</a></li>
+                        </ul>
+                        <div class="clearfix"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+       
+
+        <div class="col-md-9 animated fadeInRight">
+            <div class="row">
+                <div class="ibox-content" id="file-list">
+                    <div class="col-lg-16">
+                        {% for folder in folders %}
+                            {% if folder.is_folder %}
+                                <div class="file-box">
+                                    <div class="file">
+                                        <a href="#" class="open-folder" data-folder-name="{{ folder.filename }}">
+                                            <span class="corner"></span>
+                                                <div class="file-body">
+                                                    <svg class="icon" style="width: 71px; height: 75px" aria-hidden="true">
+                                                        <use href="#icon-folder-normal-large"></use>
+                                                    </svg>
+                                                </div>
+                                            <div class="file-name">
+                                                {{ folder.file_name }}
+                                                <br>
+                                                <small>{{folder.creation}}</small>
+                                            </div>
+                                        </a>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            </div>
+        </div>
+    </div>
+
+

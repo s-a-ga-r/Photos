@@ -1,0 +1,226 @@
+<div class="container">
+    <div class="row">
+        <div class="col-md-3">
+            <div class="ibox float-e-margins">
+                
+                <div class="ibox-content">
+                    <div class="file-manager">
+                        <div class="user-info">
+                            <ul class="list-unstyled sidebar-menu sidebar-image-section">
+                                <li class="sidebar-image-wrapper">
+                                    <div class="sidebar-standard-image">    
+                                        <div class="standard-image-1">{{user_details.standard_img}}</div>  
+                                    </div>      
+                                </li> 
+                                <li class="name employee-name" id="user-info-1">{{user_details.employee_name}}</li>
+                                <li class="designation" id="user-info-1">
+                                    <label class="label label-info">{{user_details.designation}}</label>
+                                </li>
+                            </ul>
+                        </div>
+                        <!-- <div class="resume-user">
+                            <img class="img-profile img-circle img-responsive center-block" src="https://t4.ftcdn.net/jpg/02/29/75/83/360_F_229758328_7x8jwCwjtBMmC6rgFzLFhZoEpLobB6L8.jpg" alt="">
+                        </div> -->
+                        
+
+                        <ul class="folder-list" id="folder-list"  style="padding: 0"><li></li></ul>
+
+                            <h5 class="go-home"><i class="fa fa-home me-2 icon-large"></i>Home</h5>
+
+                        <ul class="folder-list" id="folder-list"  style="padding: 0"><li></li></ul>
+
+                            <h5 class="shared-file open-media" data-media-files="Media"><i class="fa fa-film fa-sm"></i> Media</h5>
+
+                        <ul class="folder-list" id="folder-list"  style="padding: 0"><li></li></ul>
+
+                            <h5 class="go-folders"> <i class="fa fa-archive"></i>Folders</h5>
+
+                        <ul class="folder-list" id="folder-list"  style="padding: 0"><li></li></ul>
+                            
+                            <h5 class="shared-file open-shared" data-shared-files="Shared"><i class="fa fa-share-alt icon-large2"></i>Shared </h5>
+
+                        <ul class="folder-list" id="folder-list"  style="padding: 0"><li></li></ul>
+                        
+                            <h5 class="shared-file open-documents" data-documents-files="Documents"><i class="fa fa-file icon-large2"></i>Documents</h5>
+
+                        <ul class="folder-list" id="folder-list"  style="padding: 0"><li></li></ul>
+                            <h5 class="shared-file open-notification"><i class="fa fa-envelope"></i>Notifications</h5>
+                        <ul class="folder-list" id="folder-list"  style="padding: 0"><li></li></ul>
+
+
+                        <!-- <div class="user-info">
+                            <ul class="meta list list-unstyled">
+                                <li class="activity"><small>Last Active:   {{user_details.last_login}}</small></li>
+                            </ul>
+                        </div> -->
+                        
+                        <div class="clearfix-1">
+                             <ul class="meta list list-unstyled">
+                                <li class="activity"><small>Last Active:  {{user_details.last_login}}</small></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+       
+        <div class="col-md-9 animated fadeInRight">
+            <div class="row">
+                <div class="ibox-content" id="file-list">
+                <div class="col-lg-16">
+                   
+                    {% for folder in folders %}
+                            {% if folder.is_folder %}
+                                <div class="file-box">
+                                    <div class="file">
+                                        	<div class="file-header">
+													<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id="{{folder.file_id}}" data-docname={{folder.drive_id}}>
+											</div>
+                                        <a href="#" class="open-folder" data-folder-name="{{ folder.file_id }}">
+                                            <span class="corner"></span>
+                                                <div class="file-body">
+                                                    <svg class="icon" style="width: 71px; height: 75px" aria-hidden="true">
+                                                        <use href="#icon-folder-normal-large"></use>
+                                                    </svg>
+                                                </div>
+                                            <div class="file-name">
+                                                {{ folder.filename }}
+                                                <br>
+                                                <small>{{folder.creation}}</small>
+                                            </div>
+                                        </a>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% for file in files %}
+                            {% if file.file_type == "PDF"%}
+                                <div class="file-box">
+                                    <div class="file">
+                                        <div class="file-header">
+                                                <input class="level-item checkbox hidden-xs" type="checkbox" data-file-id={{file.file_id}} data-docname={{file.drive_id}}>
+                                        </div>
+                                        <a href="#" class="open-pdf" data-file-url="{{ file.file_url }}" data-name={{file.file_id}}>
+                                            <span class="corner"></span>
+
+                                            <div class="file-body">
+                                                <img alt="File Icon" style="width: 77px; height: 90px" class="icon" src="/files/file.png">
+                                            </div>
+                                            <div class="file-name">
+                                                {{file.filename}}
+                                                <br>
+                                                <small>{{file.creation}}</small>
+                                            </div>
+                                        </a>
+                                    </div>
+                                </div>
+                            {% else %}
+                                {% if file.file_type == "XLSX" || file.file_type == "CSV" %}
+                                    
+                                    <div class="file-box">
+                                        <div class="file">
+                                            <div class="file-header">
+                                                <input class="level-item checkbox hidden-xs" type="checkbox" data-file-id={{file.file_id}} data-docname={{file.drive_id}}>
+                                            </div>
+                                            <a href="#" class="open-spreadsheet" data-file-url="{{ file.file_url }}" data-name={{file.file_id}}>
+                                                <span class="corner"></span>
+                                                <!-- <div class="image">
+                                                    <img alt="image" class="img-responsive" src="/files/xls.png">
+                                                </div> -->
+
+                                                <!-- <div class="image">
+                                                    <img alt="File Icon" class="icon" src="/files/file.png">
+                                                </div> -->
+                                                <div class="file-body">
+                                                    <!-- <svg class="icon" style="width: 71px; height: 75px" aria-hidden="true"> -->
+                                                        <!-- <use src="/files/file.png"></use> -->
+                                                        <img alt="File Icon" style="width: 75px; height: 90px" class="icon" src="/files/xls.png">
+                                                    <!-- </svg> -->
+                                                </div>
+
+                                                <div class="file-name">
+                                                    {{file.filename}}
+                                                    <br>
+                                                    <small>{{file.creation}}</small>
+                                                </div>
+                                            </a>
+                    
+                                        </div>
+                                    </div>
+
+                                {% else %}
+                                    {% if file.file_type == "JPG" || file.file_type == "JPEG" || file.file_type == "PNG" %}
+                                        <div class="file-box">
+                                            <div class="file">
+                                                <div class="file-header">
+                                                        <input class="level-item checkbox hidden-xs" type="checkbox" data-file-id={{file.file_id}} data-docname={{file.drive_id}}>
+                                                </div>
+                                                <a href="#" class="image-preview" data-file-url="{{ file.file_url }}" data-file-id={{file.file_id}} data-drive-id={{file.drive_id}} data-tags="{{file.persons}}">
+                                                    <span class="corner"></span>
+                                                        
+                                                    <div class="image">
+                                                        <img alt="image" class="img-responsive" src="{{file.file_url}}">
+                                                    </div>
+                                                    <div class="file-name">
+                                                        {{file.filename}}
+                                                        <br>
+                                                        <small>{{file.creation}}</small>
+                                                    </div>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                            {% endif %}
+                        {% endif %}
+                    {% endfor %}
+
+
+                    <!-- {% for file in files %}
+                        {% if file.file_type == "XLSX"  || file.file_type == "CSV" || file.file_type == "PDF" %}
+                            <div class="file-box">
+                                <div class="file">
+                                    <a href="#" class="open-spreadsheet"  data-file-url="{{ file.file_url }}" data-name="{{ file.filename }}">
+                                        <span class="corner"></span>
+                                        <div class="file-body">
+                                            <svg class="icon" style="width: 71px; height: 75px" aria-hidden="true">
+                                                <use href="#icon-file-large"></use>
+                                            </svg>
+                                        </div>
+                                        <div class="file-name">
+                                            {{ file.file_name }}
+                                            <br>
+                                            <small>{{file.creation}}</small>
+                                        </div>
+                                    </a>
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="file-box">
+                                <div class="file">
+                                    <a href="#" class="image-preview" data-file-url="{{ file.file_url }}" data-name={{file.filename}}>
+                                        <span class="corner"></span>
+            
+                                        <div class="image">
+                                            <img alt="image" class="img-responsive" src="{{file.file_url}}">
+                                        </div>
+                                        <div class="file-name">
+                                            {{file.file_name}}
+                                            <br>
+                                            <small>{{file.creation}}</small>
+                                        </div>
+                                    </a>
+            
+                                </div>
+                            </div>
+                        {% endif %}
+
+                    {% endfor %} -->
+                </div>
+                </div>
+            </div>
+            </div>
+        </div>
+    </div>
+
+
