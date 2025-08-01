@@ -84,9 +84,7 @@ def process_file(file: "File", event: str) -> "Photo":
     if frappe.db.exists("Drive Manager", {"attached_to_name": file.name}):
         photo = frappe.new_doc("Photo")
         photo.photo = file.name
-
         frappe.msgprint(str("Processing file: {0}".format(file.name)))
-
         return photo.save()
     
 
@@ -98,6 +96,7 @@ def handle_file_update(doc, method):
             new_file_url = f"/files/{custom_folder_name}/{doc.file_name}"
             frappe.db.set_value("File", doc.name, "file_url", new_file_url)
             # Frappe handles the actual file movement based on the updated file_url
+
 
 
 

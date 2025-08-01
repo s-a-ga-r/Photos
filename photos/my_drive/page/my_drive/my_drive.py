@@ -295,6 +295,8 @@ def get_media_files(owner):
 import os
 from frappe.utils.file_manager import save_file
 from frappe.utils import get_site_path
+from frappe.utils import now
+
 @frappe.whitelist()
 def upload_file_to_my_drive():
     """Custom file upload handler that saves files to My Drive folder"""
@@ -371,19 +373,140 @@ def upload_file_to_my_drive():
 
 
 @frappe.whitelist()
-def create_drive_files(folder,filename,attached_to_name):
-    f = frappe.get_doc(
-        {
-            "doctype": "Drive Manager",
-            "file_name": filename,
-            "created_by": frappe.session.user,
-            "folder": folder,
-			"attached_to_name":attached_to_name
-        }
-    )
-    f.flags.ignore_permissions = True
-    f.insert()
-    return f
+def upload_folder_to_my_drive():
+
+    # base_folder = frappe.form_dict.get('base_folder', '')
+
+    frappe.msgprint(str("hello"))
+
+    return
+    
+
+    try:
+        # Get form data
+        base_folder = frappe.form_dict.get('base_folder', '')
+        total_files = int(frappe.form_dict.get('total_files', 0))
+
+        
+        if total_files == 0:
+            return {"success": False, "message": "No files to upload"}
+        
+        uploaded_files = []
+        
+        # Process each file
+        for i in range(total_files):
+            file_key = f"file_{i}"
+            folder_path_key = f"folder_path_{i}"
+            relative_path_key = f"relative_path_{i}"
+            
+            # Get file and path info
+            uploaded_file = frappe.request.files.get(file_key)
+            folder_path = frappe.form_dict.get(folder_path_key, '')
+            relative_path = frappe.form_dict.get(relative_path_key, '')
+            
+            if not uploaded_file:
+                continue
+            
+            # Determine the target folder
+            if folder_path:
+                target_folder = f"{base_folder}/{folder_path}"
+            else:
+                target_folder = base_folder
+            
+            # Validate file type
+            allowed_extensions = ['pdf', 'xls', 'xlsx', 'doc', 'docx', 'png', 'jpg', 'jpeg', 'gif']
+            file_extension = uploaded_file.filename.split('.')[-1].lower()
+            
+            if file_extension not in allowed_extensions:
+                frappe.log_error(f"Invalid file type: {uploaded_file.filename}")
+                continue
+            
+            try:
+                # Save file using Frappe's file manager
+                saved_file = save_file(
+                    fname=uploaded_file.filename,
+                    content=uploaded_file.read(),
+                    dt="File",  # Document type
+                    dn=None,    # Document name
+                    folder=target_folder,
+                    is_private=0  # Set to 1 if you want private files
+                )
+                
+                # Create Drive document (adjust this based on your Drive doctype structure)
+                drive_doc = frappe.get_doc({
+                    "doctype": "Drive",  # Replace with your actual doctype name
+                    "file_name": uploaded_file.filename,
+                    "file_url": saved_file.file_url,
+                    "folder": target_folder,
+                    "relative_path": relative_path,
+                    "file_size": len(uploaded_file.read()),
+                    "created_by": frappe.session.user,
+                    "created_on": now()
+                })
+                drive_doc.insert()
+                
+                uploaded_files.append({
+                    "file_id": saved_file.name,
+                    "drive_id": drive_doc.name,
+                    "file_name": uploaded_file.filename,
+                    "file_url": saved_file.file_url,
+                    "folder": target_folder,
+                    "relative_path": relative_path
+                })
+                
+            except Exception as e:
+                frappe.log_error(f"Error uploading file {uploaded_file.filename}: {str(e)}")
+                continue
+        
+        if uploaded_files:
+            return {
+                "success": True,
+                "message": {
+                    "uploaded_files": uploaded_files,
+                    "total_uploaded": len(uploaded_files)
+                }
+            }
+        else:
+            return {"success": False, "message": "No files were uploaded successfully"}
+            
+    except Exception as e:
+        frappe.log_error(f"Folder upload error: {str(e)}")
+        return {"success": False, "message": f"Server error: {str(e)}"}
+
+# You might also need this helper function to create folders
+def create_folder_structure(folder_path):
+    folders = folder_path.split('/')
+    current_path = ""
+    for folder in folders:
+        if folder:  # Skip empty strings
+            current_path = f"{current_path}/{folder}" if current_path else folder
+            
+            # Check if folder exists, create if not
+            if not frappe.db.exists("File", {"file_name": folder, "is_folder": 1, "folder": current_path}):
+                folder_doc = frappe.get_doc({
+                    "doctype": "File",
+                    "file_name": folder,
+                    "is_folder": 1,
+                    "folder": current_path
+                })
+                folder_doc.insert()
+
+
+
+# @frappe.whitelist()
+# def create_drive_files(folder,filename,attached_to_name):
+#     f = frappe.get_doc(
+#         {
+#             "doctype": "Drive Manager",
+#             "file_name": filename,
+#             "created_by": frappe.session.user,
+#             "folder": folder,
+# 			"attached_to_name":attached_to_name
+#         }
+#     )
+#     f.flags.ignore_permissions = True
+#     f.insert()
+#     return f
 
 # @frappe.whitelist()
 # def get_folder_contents(folder_name,owner):
@@ -737,19 +860,46 @@ def delete_items(name):
 def delete_bulk_items(bulk_files):
     if not bulk_files:
         frappe.msgprint(_("No items selected for deletion."))
-    # frappe.msgprint(str(bulk_files))
+
     bulk = json.loads(bulk_files)
-    for i in bulk:
+    results = []
+
+    for entry in bulk:
+        file_id = entry.get("file_id")
+        drive_id = entry.get("drive_id")
+        status = "Failed"
+
         try:
-            drive_id_exists = frappe.db.exists("Drive Manager",i['drive_id'])
-            file_id_exists = frappe.db.exists("File",i['file_id'])
-            if drive_id_exists and file_id_exists:
-                frappe.db.delete("Drive Manager", i['drive_id'])
-                frappe.db.delete("File", i['file_id'])
-                return {"status": "Success","drive_id":i['drive_id']}
-            frappe.log_error(f"Document not found: Drive ID {i['drive_id']} or File ID {i['file_id']}")
+            # Delete File
+            if file_id and frappe.db.exists("File", file_id):
+                frappe.delete_doc("File", file_id, force=True)
+            # Delete Drive
+            if drive_id and frappe.db.exists("Drive", drive_id):
+                frappe.delete_doc("Drive Manager", drive_id, force=True)
+            status = "Success"
         except Exception as e:
-            frappe.log_error(f"Error deleting {i['drive_id']}: {str(e)}")
+            frappe.log_error(frappe.get_traceback(), "delete_bulk_items error")
+        # Append result for each item
+        results.append({
+            "drive_id": drive_id,
+            "status": status
+        })
+    return results
+
+    
+   
+
+    # for i in bulk:
+    #     try:
+    #         drive_id_exists = frappe.db.exists("Drive Manager",i['drive_id'])
+    #         file_id_exists = frappe.db.exists("File",i['file_id'])
+    #         if drive_id_exists and file_id_exists:
+    #             frappe.db.delete("Drive Manager", i['drive_id'])
+    #             frappe.db.delete("File", i['file_id'])
+    #             return {"status": "Success","drive_id":i['drive_id']}
+    #         frappe.log_error(f"Document not found: Drive ID {i['drive_id']} or File ID {i['file_id']}")
+    #     except Exception as e:
+    #         frappe.log_error(f"Error deleting {i['drive_id']}: {str(e)}")
         
 
 
