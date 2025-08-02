@@ -372,26 +372,33 @@ def upload_file_to_my_drive():
 
 
 
+
 @frappe.whitelist()
 def upload_folder_to_my_drive():
-
-    # base_folder = frappe.form_dict.get('base_folder', '')
-
-    frappe.msgprint(str("hello"))
-
-    return
-    
-
     try:
         # Get form data
         base_folder = frappe.form_dict.get('base_folder', '')
         total_files = int(frappe.form_dict.get('total_files', 0))
 
+        print(total_files,base_folder)
+        
+        frappe.log_error(f"Upload folder debug - Base folder: {base_folder}, Total files: {total_files}")
         
         if total_files == 0:
             return {"success": False, "message": "No files to upload"}
         
         uploaded_files = []
+        created_folders = set()  # Track created folders to avoid duplicates
+        
+        # First, create all necessary folders
+        for i in range(total_files):
+            folder_path_key = f"folder_path_{i}"
+            folder_path = frappe.form_dict.get(folder_path_key, '')
+            
+            if folder_path and folder_path not in created_folders:
+                target_folder = f"{base_folder}/{folder_path}" if base_folder else folder_path
+                create_folder_structure(target_folder)
+                created_folders.add(folder_path)
         
         # Process each file
         for i in range(total_files):
@@ -405,13 +412,16 @@ def upload_folder_to_my_drive():
             relative_path = frappe.form_dict.get(relative_path_key, '')
             
             if not uploaded_file:
+                frappe.log_error(f"No file found for key: {file_key}")
                 continue
             
             # Determine the target folder
             if folder_path:
-                target_folder = f"{base_folder}/{folder_path}"
+                target_folder = f"{base_folder}/{folder_path}" if base_folder else folder_path
             else:
                 target_folder = base_folder
+            
+            frappe.log_error(f"Processing file: {uploaded_file.filename} to folder: {target_folder}")
             
             # Validate file type
             allowed_extensions = ['pdf', 'xls', 'xlsx', 'doc', 'docx', 'png', 'jpg', 'jpeg', 'gif']
@@ -420,42 +430,54 @@ def upload_folder_to_my_drive():
             if file_extension not in allowed_extensions:
                 frappe.log_error(f"Invalid file type: {uploaded_file.filename}")
                 continue
-            
             try:
+                # Read file content once
+                file_content = uploaded_file.read()
+                uploaded_file.seek(0)  # Reset file pointer
+                
                 # Save file using Frappe's file manager
                 saved_file = save_file(
                     fname=uploaded_file.filename,
-                    content=uploaded_file.read(),
-                    dt="File",  # Document type
-                    dn=None,    # Document name
+                    content=file_content,
+                    dt=None,  # Don't attach to any document
+                    dn=None,
                     folder=target_folder,
-                    is_private=0  # Set to 1 if you want private files
+                    is_private=0
                 )
                 
-                # Create Drive document (adjust this based on your Drive doctype structure)
-                drive_doc = frappe.get_doc({
-                    "doctype": "Drive",  # Replace with your actual doctype name
-                    "file_name": uploaded_file.filename,
-                    "file_url": saved_file.file_url,
-                    "folder": target_folder,
-                    "relative_path": relative_path,
-                    "file_size": len(uploaded_file.read()),
-                    "created_by": frappe.session.user,
-                    "created_on": now()
-                })
-                drive_doc.insert()
+                frappe.log_error(f"File saved successfully: {saved_file.name}")
+                
+                # Create your custom Drive document if needed
+                # Adjust this based on your actual Drive doctype
+                try:
+                    drive_doc = frappe.get_doc({
+                        "doctype": "Drive Manager",  # Replace with your actual doctype
+                        "file_name": uploaded_file.filename,
+                        "attached_to_name":saved_file.name,
+                        "file_url": saved_file.file_url,
+                        "folder": target_folder,
+                        "file_size": len(file_content),
+                        "created_by": frappe.session.user,
+                    })
+                    drive_doc.insert(ignore_permissions=True)
+                    drive_id = drive_doc.name
+                    frappe.log_error(f"Drive document created: {drive_id}")
+                except Exception as drive_error:
+                    # If Drive doctype doesn't exist or fails, just use the File document
+                    frappe.log_error(f"Drive document creation failed: {str(drive_error)}")
+                    drive_id = "Not Created"
                 
                 uploaded_files.append({
                     "file_id": saved_file.name,
-                    "drive_id": drive_doc.name,
+                    "drive_id": drive_id,
                     "file_name": uploaded_file.filename,
                     "file_url": saved_file.file_url,
                     "folder": target_folder,
                     "relative_path": relative_path
                 })
                 
-            except Exception as e:
-                frappe.log_error(f"Error uploading file {uploaded_file.filename}: {str(e)}")
+            except Exception as file_error:
+                frappe.log_error(f"Error uploading file {uploaded_file.filename}: {str(file_error)}")
                 continue
         
         if uploaded_files:
@@ -473,23 +495,52 @@ def upload_folder_to_my_drive():
         frappe.log_error(f"Folder upload error: {str(e)}")
         return {"success": False, "message": f"Server error: {str(e)}"}
 
-# You might also need this helper function to create folders
+
 def create_folder_structure(folder_path):
-    folders = folder_path.split('/')
-    current_path = ""
-    for folder in folders:
-        if folder:  # Skip empty strings
-            current_path = f"{current_path}/{folder}" if current_path else folder
+    """Create folder structure recursively"""
+    try:
+        # Split the path and create folders step by step
+        if not folder_path or folder_path == "/":
+            return
             
-            # Check if folder exists, create if not
-            if not frappe.db.exists("File", {"file_name": folder, "is_folder": 1, "folder": current_path}):
-                folder_doc = frappe.get_doc({
-                    "doctype": "File",
-                    "file_name": folder,
-                    "is_folder": 1,
-                    "folder": current_path
-                })
-                folder_doc.insert()
+        # Clean up the path
+        folder_path = folder_path.strip('/')
+        folders = folder_path.split('/')
+        current_path = ""
+        
+        for folder_name in folders:
+            if not folder_name:
+                continue
+                
+            # Build the path step by step
+            parent_folder = current_path if current_path else "Home"
+            current_path = f"{current_path}/{folder_name}" if current_path else folder_name
+            
+            # Check if folder already exists
+            existing_folder = frappe.db.get_value("File", {
+                "file_name": folder_name,
+                "is_folder": 1,
+                "folder": parent_folder
+            })
+            
+            if not existing_folder:
+                try:
+                    # Create the folder
+                    folder_doc = frappe.get_doc({
+                        "doctype": "File",
+                        "file_name": folder_name,
+                        "is_folder": 1,
+                        "folder": parent_folder
+                    })
+                    folder_doc.insert(ignore_permissions=True)
+                    frappe.log_error(f"Created folder: {folder_name} in {parent_folder}")
+                except Exception as folder_error:
+                    frappe.log_error(f"Error creating folder {folder_name}: {str(folder_error)}")
+                    raise folder_error
+                    
+    except Exception as e:
+        frappe.log_error(f"Error in create_folder_structure for path {folder_path}: {str(e)}")
+        raise e
 
 
 
@@ -888,83 +939,3 @@ def delete_bulk_items(bulk_files):
 
     
    
-
-    # for i in bulk:
-    #     try:
-    #         drive_id_exists = frappe.db.exists("Drive Manager",i['drive_id'])
-    #         file_id_exists = frappe.db.exists("File",i['file_id'])
-    #         if drive_id_exists and file_id_exists:
-    #             frappe.db.delete("Drive Manager", i['drive_id'])
-    #             frappe.db.delete("File", i['file_id'])
-    #             return {"status": "Success","drive_id":i['drive_id']}
-    #         frappe.log_error(f"Document not found: Drive ID {i['drive_id']} or File ID {i['file_id']}")
-    #     except Exception as e:
-    #         frappe.log_error(f"Error deleting {i['drive_id']}: {str(e)}")
-        
-
-
-        # frappe.msgprint(str(i['drive_id']))
-        # frappe.msgprint(str(i['file_id']))
-        # frappe.db.delete("Drive Manager", name)
-        # frappe.db.delete("File", file_record)
-        # return {"status": "Success"}
-        # frappe.msgprint(str(i))
-
-
-    # return
-    # file_record = frappe.get_value("Drive Manager", name, "attached_to_name")
-    # if file_record:
-    #     frappe.db.delete("Drive Manager", name)
-    #     frappe.db.delete("File", file_record)
-    #     return {"status": "Success"}
-    # else:
-    #     frappe.msgprint(str("File Already Deleted Not Found"))
-
-
-# @frappe.whitelist()
-# def delete_items(doctype,name):
-# 	frappe.msgprint(str(name))
-# 	drive_record = frappe.get_value("Drive Manager", {"attached_to_name": name}, "name") 
-# 	if drive_record:
-# 		frappe.delete_doc("Drive Manager", drive_record)
-
-# 	items = [name]
-# 	if len(items) > 10:
-# 		frappe.enqueue("frappe.desk.reportview.delete_bulk", doctype="File", items=items)
-# 	else:
-# 		delete_bulk(doctype,items)
-
-
-# def delete_bulk(doctype, items):
-# 	undeleted_items = []
-# 	for i, d in enumerate(items):
-# 		try:
-# 			frappe.delete_doc(doctype, d)
-			
-# 			if len(items) >= 5:
-# 				frappe.publish_realtime(
-# 					"progress",
-# 					dict(
-# 						progress=[i + 1, len(items)], title=_("Deleting {0}").format(doctype), description=d
-# 					),
-# 					user=frappe.session.user,
-# 				)
-# 			# Commit after successful deletion
-# 			frappe.db.commit()
-# 		except Exception:
-# 			# rollback if any record failed to delete
-# 			# if not rollbacked, queries get committed on after_request method in app.py
-# 			undeleted_items.append(d)
-# 			frappe.db.rollback()
-# 	if undeleted_items and len(items) != len(undeleted_items):
-# 		frappe.clear_messages()
-# 		delete_bulk(doctype, undeleted_items)
-# 	elif undeleted_items:
-# 		frappe.msgprint(
-# 			_("Failed to delete {0} documents: {1}").format(len(undeleted_items), ", ".join(undeleted_items)),
-# 			realtime=True,
-# 			title=_("Bulk Operation Failed"),
-# 		)
-# 	else:
-# 		frappe.msgprint(_("Deleted all documents successfully"), realtime=True, title=_("Bulk Operation Successful"))
-

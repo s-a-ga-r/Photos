@@ -1359,6 +1359,7 @@ class MyDrive {
 				
 				// Handle successful folder upload
 				if (response.message && response.message.uploaded_files) {
+					console.log("response of folder upload",response.message,response.message.uploaded_files);
 					$(".empty-state-1").remove();
 					response.message.uploaded_files.forEach(fileInfo => {
 						self.addFileToUI(fileInfo);
@@ -1410,7 +1411,6 @@ class MyDrive {
 
 		self.permissions.push(permissions);
 		console.log("File and Drive Manager created successfully: Permissions:", self.permissions);
-
 		self.addFileToUI({
 			file_url: file_url,
 			file_name: file_name,
@@ -1421,6 +1421,8 @@ class MyDrive {
 	}
 
 	addFileToUI(fileInfo) {
+		console.log("Inside Add files to Ui");
+
 		let fileContainer = document.querySelector(".col-lg-16");
 		let newFileBox = document.createElement("div");
 		const allowedTypes = ["pdf", "xls", "xlsx", "doc", "docx"];
