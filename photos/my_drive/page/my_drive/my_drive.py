@@ -444,9 +444,7 @@ def upload_folder_to_my_drive():
                     folder=target_folder,
                     is_private=0
                 )
-                
                 frappe.log_error(f"File saved successfully: {saved_file.name}")
-                
                 # Create your custom Drive document if needed
                 # Adjust this based on your actual Drive doctype
                 try:
@@ -483,10 +481,9 @@ def upload_folder_to_my_drive():
         if uploaded_files:
             return {
                 "success": True,
-                "message": {
-                    "uploaded_files": uploaded_files,
-                    "total_uploaded": len(uploaded_files)
-                }
+                "folder":target_folder,
+                "uploaded_files":uploaded_files,
+                "total_uploaded": len(uploaded_files)
             }
         else:
             return {"success": False, "message": "No files were uploaded successfully"}
@@ -502,7 +499,6 @@ def create_folder_structure(folder_path):
         # Split the path and create folders step by step
         if not folder_path or folder_path == "/":
             return
-            
         # Clean up the path
         folder_path = folder_path.strip('/')
         folders = folder_path.split('/')
@@ -515,15 +511,26 @@ def create_folder_structure(folder_path):
             # Build the path step by step
             parent_folder = current_path if current_path else "Home"
             current_path = f"{current_path}/{folder_name}" if current_path else folder_name
+
+            print("current_path",current_path)
             
             # Check if folder already exists
-            existing_folder = frappe.db.get_value("File", {
+            existing_file_folder = frappe.db.get_value("File", {
                 "file_name": folder_name,
                 "is_folder": 1,
                 "folder": parent_folder
             })
-            
-            if not existing_folder:
+
+            print("existing_folder",existing_file_folder)
+
+            existing_drive_folder = frappe.db.get_value("Drive manager", {
+                "attached_to_name": existing_file_folder,
+                "is_folder": 1,
+            })
+
+            print("existing_drive_folder",existing_drive_folder)
+
+            if not existing_file_folder:
                 try:
                     # Create the folder
                     folder_doc = frappe.get_doc({
@@ -533,11 +540,51 @@ def create_folder_structure(folder_path):
                         "folder": parent_folder
                     })
                     folder_doc.insert(ignore_permissions=True)
+                    
                     frappe.log_error(f"Created folder: {folder_name} in {parent_folder}")
                 except Exception as folder_error:
                     frappe.log_error(f"Error creating folder {folder_name}: {str(folder_error)}")
                     raise folder_error
-                    
+                
+            elif not existing_drive_folder:
+                try:
+                    # create drive folder
+                    drive_folder_doc = frappe.get_doc({
+                        "doctype": "Drive Manager",
+                        "file_name": folder_name,
+                        "attached_to_name":existing_file_folder,
+                        "is_folder": 1,
+                        "folder": parent_folder,
+                        "created_by":frappe.session.user
+                    })
+                    drive_folder_doc.insert(ignore_permissions=True)
+                    frappe.log_error(f"Created drive folder: {folder_name} in {parent_folder}")
+                except Exception as folder_error:
+                    frappe.log_error(f"Error creating drive folder {folder_name}: {str(folder_error)}")
+                    raise folder_error
+            else:
+                try:
+                    # Create the both folder
+                    folder_doc = frappe.get_doc({
+                        "doctype": "File",
+                        "file_name": folder_name,
+                        "is_folder": 1,
+                        "folder": parent_folder
+                    })
+                    folder_doc.insert(ignore_permissions=True)
+                    drive_folder_doc = frappe.get_doc({
+                        "doctype": "Drive Manager",
+                        "file_name": folder_name,
+                        "attached_to_name":folder_doc.name,
+                        "is_folder": 1,
+                        "folder": parent_folder,
+                        "created_by":frappe.session.user
+                    })
+                    drive_folder_doc.insert(ignore_permissions=True)
+                    frappe.log_error(f"Created folder: {folder_name} in {parent_folder}")
+                except Exception as folder_error:
+                    frappe.log_error(f"Error creating folder {folder_name}: {str(folder_error)}")
+                    raise folder_error
     except Exception as e:
         frappe.log_error(f"Error in create_folder_structure for path {folder_path}: {str(e)}")
         raise e

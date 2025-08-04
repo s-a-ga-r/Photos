@@ -1266,6 +1266,25 @@ class MyDrive {
 		}
 	}
 
+	backButton(){
+		this.page.add_inner_button(__('Back'), () => {
+			console.log("Back button clicked");
+			// self.page.get_inner_group_button(__('Back')).hide();
+			self.goBack();
+		});
+		this.backButtonAdded = true;
+	}
+
+	makeURL(folder){
+		console.log(`making URL for :${folder}`);
+		this.current_folder = folder;
+		this.page.set_title(__(self.current_folder));
+		let base_url = window.location.pathname
+		console.log("base_url", base_url);
+		let newUrl = base_url.split("my-drive")[0] + "my-drive/" + self.current_folder;
+		console.log(`openFolder ${folder} newUrl`, newUrl);
+		history.pushState({ folder:folder}, "", newUrl);
+	}
 
 	// New folder upload functionality
 	uploadFolder() {
@@ -1283,7 +1302,6 @@ class MyDrive {
 				frappe.msgprint(__("No files selected"));
 				return;
 			}
-			
 			// Filter valid files
 			const allowedExtensions = ['pdf', 'xls', 'xlsx', 'doc', 'docx', 'png', 'jpg', 'jpeg', 'gif'];
 			const validFiles = files.filter(file => {
@@ -1325,7 +1343,6 @@ class MyDrive {
 				relativePath: relativePath
 			});
 		});
-		
 		return folderStructure;
 	}
 
@@ -1335,8 +1352,6 @@ class MyDrive {
 		
 		// Create FormData for multiple files
 		let form_data = new FormData();
-		
-		// Add base folder info
 		form_data.append("base_folder", baseFolderName);
 		form_data.append("total_files", folderData.length);
 		
@@ -1346,7 +1361,6 @@ class MyDrive {
 			form_data.append(`folder_path_${index}`, fileInfo.folderPath);
 			form_data.append(`relative_path_${index}`, fileInfo.relativePath);
 		});
-		
 		var xhr = new XMLHttpRequest();
 		xhr.open("POST", "/api/method/photos.my_drive.page.my_drive.my_drive.upload_folder_to_my_drive", true);
 		xhr.setRequestHeader("Accept", "application/json");
@@ -1356,16 +1370,31 @@ class MyDrive {
 			if (xhr.status === 200) {
 				console.log("Folder uploaded successfully:", xhr.responseText);
 				let response = JSON.parse(xhr.responseText);
-				
-				// Handle successful folder upload
-				if (response.message && response.message.uploaded_files) {
-					console.log("response of folder upload",response.message,response.message.uploaded_files);
+				console.log(`response ${response}`);
+
+				if(response.message.success){
+					console.log("uploading files",response.message.uploaded_files);
+					let files = response.message.uploaded_files
+					let folder = response.message.folder
+					console.log(`files :${files}`);
+					console.log(`folders : ${folder}`);
 					$(".empty-state-1").remove();
-					response.message.uploaded_files.forEach(fileInfo => {
-						self.addFileToUI(fileInfo);
-					});
+					self.makeURL(folder)
+					self.backButton()
+					self.addFileToUI(files);
+				}else{
 					frappe.msgprint(__("Folder uploaded successfully! {0} files uploaded.", [response.message.uploaded_files.length]));
 				}
+				
+				// Handle successful folder upload
+				// if (response.message && response.message.uploaded_files) {
+				// 	console.log("response of folder upload",response.message,response.message.uploaded_files);
+				// 	$(".empty-state-1").remove();
+				// 	response.message.uploaded_files.forEach(fileInfo => {
+				// 		self.addFileToUI(fileInfo);
+				// 	});
+				// 	frappe.msgprint(__("Folder uploaded successfully! {0} files uploaded.", [response.message.uploaded_files.length]));
+				// }
 			} else {
 				console.error("Folder upload failed:", xhr.statusText);
 				frappe.msgprint(__("Error uploading folder: {0}", [xhr.statusText]));
@@ -1420,65 +1449,95 @@ class MyDrive {
 		});
 	}
 
-	addFileToUI(fileInfo) {
-		console.log("Inside Add files to Ui");
-
+	addFileToUI(files) {
+		// console.log("Inside Add files to UI the res", files);
 		let fileContainer = document.querySelector(".col-lg-16");
-		let newFileBox = document.createElement("div");
 		const allowedTypes = ["pdf", "xls", "xlsx", "doc", "docx"];
 		
-		// Determine file type
-		const fileExtension = fileInfo.file_name.split('.').pop().toLowerCase();
+		// Add files with staggered animation
+		files.forEach((file, index) => {
+			setTimeout(() => {
+				// Create a NEW element for EACH file
+				let newFileBox = document.createElement("div");
+
+				
+				// Determine file type
+				const fileExtension = file.file_name.split('.').pop().toLowerCase();
+				
+				if (allowedTypes.includes(fileExtension)) {
+					// Document file
+					newFileBox.className = "file-box";
+					newFileBox.innerHTML = `
+						<div class="file">
+							<div class="file-header">
+								<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id="${file.file_id}" data-docname="${file.drive_id}">
+							</div>
+							<a href="#" class="open-spreadsheet" data-file-url="${file.file_url}" data-name="${file.file_id}">
+								<span class="corner"></span>
+								<div class="file-body">
+									<svg class="icon" style="width: 71px; height: 75px" aria-hidden="true">
+										<use href="#icon-file-large"></use>
+									</svg>
+								</div>
+								<div class="file-name">
+									${file.file_name}
+									<br>
+									<small>Just now</small>
+								</div>
+							</a>
+						</div>`;
+				} else {
+					// Image file
+					newFileBox.className = "file-box";
+					newFileBox.innerHTML = `
+						<div class="file">
+							<div class="file-header">
+								<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id="${file.file_id}" data-docname="${file.drive_id}">
+							</div>
+							<a href="#" class="image-preview" data-file-url="${file.file_url}" data-file-id="${file.file_id}" data-drive-id="${file.drive_id}">
+								<span class="corner"></span>
+								<div class="image">
+									<img alt="image" class="img-responsive" src="${file.file_url}">
+								</div>
+								<div class="file-name">
+									${file.file_name}
+									<br>
+									<small>Just now</small>
+								</div>
+							</a>
+						</div>`;
+				}
+				
+				// Add fade-in animation
+				newFileBox.style.opacity = '0';
+				newFileBox.style.transform = 'translateY(20px)';
+				newFileBox.style.transition = 'all 0.3s ease-in-out';
+				
+				// Add THIS file's element to the container
+				fileContainer.prepend(newFileBox);
+				
+				// Trigger fade-in animation
+				setTimeout(() => {
+					newFileBox.style.opacity = '1';
+					newFileBox.style.transform = 'translateY(0)';
+				}, 50);
+				
+				// Show upload progress message
+				console.log(`File ${index + 1}/${files.length} added to UI: ${file.file_name}`);
+				
+			}, index * 300); // 300ms delay between each file
+		});
 		
-		if (allowedTypes.includes(fileExtension)) {
-			// Document file
-			newFileBox.className = "file-box";
-			newFileBox.innerHTML = `
-				<div class="file">
-					<div class="file-header">
-						<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id="${fileInfo.file_id}" data-docname="${fileInfo.drive_id}">
-					</div>
-					<a href="#" class="open-spreadsheet" data-file-url="${fileInfo.file_url}" data-name="${fileInfo.file_id}">
-						<span class="corner"></span>
-						<div class="file-body">
-							<svg class="icon" style="width: 71px; height: 75px" aria-hidden="true">
-								<use href="#icon-file-large"></use>
-							</svg>
-						</div>
-						<div class="file-name">
-							${fileInfo.file_name}
-							<br>
-							<small>Just now</small>
-						</div>
-					</a>
-				</div>`;
-		} else {
-			// Image file
-			newFileBox.className = "file-box";
-			newFileBox.innerHTML = `
-				<div class="file">
-					<div class="file-header">
-						<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id="${fileInfo.file_id}" data-docname="${fileInfo.drive_id}">
-					</div>
-					<a href="#" class="image-preview" data-file-url="${fileInfo.file_url}" data-file-id="${fileInfo.file_id}" data-drive-id="${fileInfo.drive_id}">
-						<span class="corner"></span>
-						<div class="image">
-							<img alt="image" class="img-responsive" src="${fileInfo.file_url}">
-						</div>
-						<div class="file-name">
-							${fileInfo.file_name}
-							<br>
-							<small>Just now</small>
-						</div>
-					</a>
-				</div>`;
-		}
-		
-		fileContainer.prepend(newFileBox);
+		// Show completion message after all files are added
+		setTimeout(() => {
+			frappe.show_alert({
+				message: __('All {0} files uploaded successfully!', [files.length]),
+				indicator: 'green'
+			}, 3);
+		}, files.length * 300 + 500);
 	}
 
-
-
+	
 
 
 	openShared() {
