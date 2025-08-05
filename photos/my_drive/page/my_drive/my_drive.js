@@ -1103,6 +1103,7 @@ class MyDrive {
 
 			this.page.add_action_item(__(' <i class="fa fa-plus"></i> New Folder'), function () {
 				// frappe.msgprint("Create New folder");
+				console.log(self.current_folder);
 				frappe.prompt(
 					__("Name"),
 					(values) => {
@@ -1267,21 +1268,23 @@ class MyDrive {
 	}
 
 	backButton(){
+
 		this.page.add_inner_button(__('Back'), () => {
 			console.log("Back button clicked");
 			// self.page.get_inner_group_button(__('Back')).hide();
-			self.goBack();
+			this.goBack();
 		});
 		this.backButtonAdded = true;
 	}
 
 	makeURL(folder){
-		console.log(`making URL for :${folder}`);
+		// let self = this
+		console.log(`making URL for :${folder} nd the current folder ${this.current_folder}`);
 		this.current_folder = folder;
-		this.page.set_title(__(self.current_folder));
+		this.page.set_title(__(this.current_folder));
 		let base_url = window.location.pathname
 		console.log("base_url", base_url);
-		let newUrl = base_url.split("my-drive")[0] + "my-drive/" + self.current_folder;
+		let newUrl = base_url.split("my-drive")[0] + "my-drive/" + this.current_folder;
 		console.log(`openFolder ${folder} newUrl`, newUrl);
 		history.pushState({ folder:folder}, "", newUrl);
 	}
@@ -1343,6 +1346,10 @@ class MyDrive {
 				relativePath: relativePath
 			});
 		});
+
+		console.log("prepareFolderData folderData :",folderStructure);
+
+
 		return folderStructure;
 	}
 
@@ -1376,14 +1383,14 @@ class MyDrive {
 					console.log("uploading files",response.message.uploaded_files);
 					let files = response.message.uploaded_files
 					let folder = response.message.folder
-					console.log(`files :${files}`);
-					console.log(`folders : ${folder}`);
+					console.log(`response files :${files}`);
+					console.log(`response folders : ${folder}`);
 					$(".empty-state-1").remove();
 					self.makeURL(folder)
 					self.backButton()
 					self.addFileToUI(files);
 				}else{
-					frappe.msgprint(__("Folder uploaded successfully! {0} files uploaded.", [response.message.uploaded_files.length]));
+					frappe.msgprint(__("Folder uploaded successfully! {0} files uploaded.", [response.message.total_uploaded]));
 				}
 				
 				// Handle successful folder upload

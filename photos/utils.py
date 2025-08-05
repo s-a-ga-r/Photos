@@ -74,28 +74,28 @@ def get_file_dashboard(*args, **kwargs):
 # after added image in file doctype it auto insert in Photo doctype
 
 
-def process_file(file: "File", event: str) -> "Photo":
-    if event != "after_insert":
-        raise NotImplementedError
+# def process_file(file: "File", event: str) -> "Photo":
+#     if event != "after_insert":
+#         raise NotImplementedError
 
-    if file.is_folder or not file.content_type.startswith("image"):
-        return
+#     if file.is_folder or not file.content_type.startswith("image"):
+#         return
     
-    if frappe.db.exists("Drive Manager", {"attached_to_name": file.name}):
-        photo = frappe.new_doc("Photo")
-        photo.photo = file.name
-        frappe.msgprint(str("Processing file: {0}".format(file.name)))
-        return photo.save()
+#     if frappe.db.exists("Drive Manager", {"attached_to_name": file.name}):
+#         photo = frappe.new_doc("Photo")
+#         photo.photo = file.name
+#         frappe.msgprint(str("Processing file: {0}".format(file.name)))
+#         return photo.save()
     
 
-def handle_file_update(doc, method):
-    if doc.attached_to_doctype == "YourCustomDoctype":
-        # Example: Create a folder based on a field in YourCustomDoctype
-        custom_folder_name = frappe.db.get_value("YourCustomDoctype", doc.attached_to_name, "your_field_for_folder_name")
-        if custom_folder_name:
-            new_file_url = f"/files/{custom_folder_name}/{doc.file_name}"
-            frappe.db.set_value("File", doc.name, "file_url", new_file_url)
-            # Frappe handles the actual file movement based on the updated file_url
+# def handle_file_update(doc, method):
+#     if doc.attached_to_doctype == "YourCustomDoctype":
+#         # Example: Create a folder based on a field in YourCustomDoctype
+#         custom_folder_name = frappe.db.get_value("YourCustomDoctype", doc.attached_to_name, "your_field_for_folder_name")
+#         if custom_folder_name:
+#             new_file_url = f"/files/{custom_folder_name}/{doc.file_name}"
+#             frappe.db.set_value("File", doc.name, "file_url", new_file_url)
+#             # Frappe handles the actual file movement based on the updated file_url
 
 
 
@@ -103,16 +103,16 @@ def handle_file_update(doc, method):
 
 # original code
 
-# def process_file(file: "File", event: str) -> "Photo":
-#     if event != "after_insert":
-#         raise NotImplementedError
+def process_file(file: "File", event: str) -> "Photo":
+    if event != "after_insert":
+        raise NotImplementedError
 
-#     if file.is_folder or not file.content_type.startswith("image"):
-#         return
+    if file.is_folder or not file.content_type.startswith("image"):
+        return
 
-#     photo = frappe.new_doc("Photo")
-#     photo.photo = file.name
+    photo = frappe.new_doc("Photo")
+    photo.photo = file.name
 
-#     frappe.msgprint(str("Processing file: {0}".format(file.name)))
+    frappe.msgprint(str("Processing file: {0}".format(file.name)))
 
-#     return photo.save()
+    return photo.save()

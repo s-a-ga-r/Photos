@@ -81,8 +81,7 @@ app_license = "MIT"
 
 doc_events = {
     "File": {"after_insert": "photos.utils.process_file"},
-    "File": {"on_update": "photos.utils.handle_file_update"}
-
+    # "File": {"on_update": "photos.utils.handle_file_update"}
 }
 
 # Scheduled Tasks
