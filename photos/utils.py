@@ -116,3 +116,5 @@ def process_file(file: "File", event: str) -> "Photo":
     frappe.msgprint(str("Processing file: {0}".format(file.name)))
 
     return photo.save()
+
+

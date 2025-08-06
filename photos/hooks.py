@@ -45,6 +45,8 @@ app_license = "MIT"
 # Website user home page (by function)
 # get_website_user_home_page = "photos.utils.get_home_page"
 
+
+
 # Generators
 # ----------
 
@@ -56,6 +58,9 @@ app_license = "MIT"
 
 # before_install = "photos.install.before_install"
 # after_install = "photos.install.after_install"
+
+write_file = "photos.file.write_file"
+
 
 # Desk Notifications
 # ------------------
@@ -121,6 +126,9 @@ doc_events = {
 # generated from the base implementation of the doctype dashboard,
 # along with any modifications made in other Frappe apps
 override_doctype_dashboards = {"File": "photos.utils.get_file_dashboard"}
+
+
+
 
 # exempt linked doctypes from being automatically cancelled
 #
