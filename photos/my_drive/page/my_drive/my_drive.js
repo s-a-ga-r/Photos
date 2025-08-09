@@ -5,7 +5,6 @@ frappe.pages['my-drive'].on_page_load = function (wrapper) {
 class MyDrive {
 	constructor(wrapper) {
 		this.wrapper = wrapper;
-		this.folder_history = []
 		this.current_folder = "Home"
 		this.drive_access = []
 		this.permissions = []
@@ -32,6 +31,7 @@ class MyDrive {
 				this.driveAccess()
 		})
 		this.renderTemplate(this.current_folder);
+		this.imagePreview()
 		this.PDFpreview();
 		this.bindCheckboxEvents();
 		this.openShared()
@@ -57,10 +57,11 @@ class MyDrive {
 	}
 
 
+
 	renderTemplate(folder) {
 		console.log("current_folder", this.current_folder, "window location", window.location.pathname);
-		folder = folder || this.current_folder;
 		// $(".page-wrapper").html("")
+		this.page.set_title(__(folder));
 
 		if (window.location.pathname !== "/app/my-drive") {
 			console.log("window.location was ", window.location.pathname);
@@ -68,7 +69,7 @@ class MyDrive {
 		}
 
 		frappe.call({
-			method: "photos.my_drive.page.my_drive.my_drive.render_template_context",
+			method: "photos.my_drive.page.my_drive.my_drive.render_template",
 			args: { owner: frappe.session.user, folder: folder },
 			callback: (r) => {
 				if (r.message) {
@@ -113,7 +114,7 @@ class MyDrive {
 					}
 					this.current_folder = folder;
 					this.openFolder();
-					this.imagePreview()
+					// this.imagePreview()
 				}
 			}
 		});
@@ -153,7 +154,7 @@ class MyDrive {
 					deleteButton = this.page.add_inner_button(__('Delete'), () => {
 						let currentSelectedFiles = this.getSelectedFiles(); // Get fresh data when button is clicked
 						if (currentSelectedFiles.length > 0) {
-							this.deleteFiles(currentSelectedFiles);
+							this.deleteFile(currentSelectedFiles);
 						} else {
 							frappe.msgprint({
 								title: __('No Files Selected'),
@@ -194,7 +195,7 @@ class MyDrive {
 		return selectedFiles;
 	}
 
-	deleteFiles(selectedFiles){
+	deleteFile(selectedFiles){
 		let self = this
 		console.log(selectedFiles);
 		if (selectedFiles.length !== 0){
@@ -545,6 +546,24 @@ class MyDrive {
 		}
 	}
 
+	handleFilePermissions(files) {
+		files.forEach(file => {
+			let permissions = {
+				file_id: file.file_id,
+				drive_id: file.drive_id,
+				read: 1,
+				write: 1,
+				delete: 1,
+				download: 1,
+				share: 1,
+				create: 1,
+			}
+			this.permissions.push(permissions);
+		});
+
+		console.log("Handled the Permissions:", this.permissions)
+	}
+
 	fileUpload() {
 		let self = this
 		this.page.add_action_item(__('<i class="fa fa-file"></i> Upload File'), function () {
@@ -555,9 +574,9 @@ class MyDrive {
 			
 			file_input.onchange = function () {
 				var file = file_input.files[0];
-				let folderName = self.current_folder;
-				console.log("Uploading file to ...", folderName);
-				console.table("file",file);
+				let folder = self.current_folder;
+				// console.log("Uploading file to ...", folderName);
+				// console.table("file",file);
 				
 				var xhr = new XMLHttpRequest();
 				// Update the endpoint to your custom upload handler
@@ -567,78 +586,31 @@ class MyDrive {
 				
 				let form_data = new FormData();
 				form_data.append("file", file, file.name);
-				form_data.append("folder", folderName);
+				form_data.append("folder", folder);
 				
 				xhr.onload = function () {
 					if (xhr.status === 200) {
 						$(".empty-state-1").remove();
 						console.log("File uploaded successfully:", xhr.responseText);
 						let response = JSON.parse(xhr.responseText);
-						let file_url = response.message.file_url;
-						let file_name = response.message.file_name;
-						let file_id = response.message.file_id;
-						let drive_id = response.message.drive_id;
+						// Add permissions
 
-						let permissions = {
-							drive_id: drive_id,
-							file_id: file_id,
-							read:1,
-							write:1,
-							delete:1,
-							download:1,
-							share:1,
-							create:1,
+						if(response.message.success){
+							let files = response.message.uploaded_files
+							let folder = response.message.folder
+							self.handleFilePermissions(files)
+							// console.log("uploading files",response.message.uploaded_files);
+							// console.log(`response files :${files}`);
+							// console.log(`response folders : ${folder}`);
+							$(".empty-state-1").remove();
+							self.makeURL(folder)
+							self.backButton()
+							self.FileUI(files)
+						}else{
+							frappe.msgprint(__("File uploaded successfully! {0} files uploaded.", [response.message.total_uploaded]));
 						}
-
-						self.permissions.push(permissions)
-						console.log("File and Drive Manager created successfully: Permissions : ",self.permissions);
-
-						let fileContainer = document.querySelector(".col-lg-16");
-						let newFileBox = document.createElement("div");
-						const allowedTypes = ["pdf", "xls", "xlsx", "doc", "docx"];
 						
-						if (allowedTypes.includes(file.name.split('.').pop().toLowerCase())) {
-							newFileBox.className = "file-box";
-							newFileBox.innerHTML = `
-								<div class="file">
-									<div class="file-header">
-										<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id=${file_id} data-docname=${drive_id}>
-									</div>
-									<a href="#" class="open-spreadsheet" data-file-url="${file_url}" data-name="${file_id}">
-										<span class="corner"></span>
-										<div class="file-body">
-											<svg class="icon" style="width: 71px; height: 75px" aria-hidden="true">
-												<use href="#icon-file-large"></use>
-											</svg>
-										</div>
-										<div class="file-name">
-											${file_name}
-											<br>
-											<small>Just now</small>
-										</div>
-									</a>
-								</div>`;
-						} else {
-							newFileBox.className = "file-box";
-							newFileBox.innerHTML = `
-							<div class="file">
-								<div class="file-header">
-									<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id="${file_id}" data-docname="${drive_id}">
-								</div>
-								<a href="#" class="image-preview" data-file-url="${file_url}" data-file-id="${file_id} data-drive-id="${drive_id}">
-									<span class="corner"></span>
-									<div class="image">
-										<img alt="image" class="img-responsive" src="${file_url}">
-									</div>
-									<div class="file-name">
-										${file_name}
-										<br>
-										<small>Just now</small>
-									</div>
-								</a>
-							</div>`;
-						}
-						fileContainer.prepend(newFileBox);
+					
 					} else {
 						console.error("Upload failed:", xhr.statusText);
 						frappe.msgprint(__("Error uploading file: {0}", [xhr.statusText]));
@@ -651,88 +623,10 @@ class MyDrive {
 				};
 				
 				xhr.send(form_data);
-				console.log("Uploading file:", file.name);
+				console.log("form data send to server", form_data);
 			};
 			
 			file_input.click();
-		});
-	}
-
-	newFolder(){
-		this.page.add_action_item(__(' <i class="fa fa-plus"></i> New Folder'), function () {
-			console.log(self.current_folder);
-			frappe.prompt(
-				__("Name"),
-				(values) => {
-					if (values.value.includes("/")) {
-						create_new_folder
-						frappe.throw(__("Folder name should not include '/' (slash)"));
-					}
-
-					const data = {
-						file_name: values.value,
-						folder: self.current_folder || "Home", // Default folder
-					};
-
-					frappe.call({
-						method: "frappe.core.api.file.create_new_folder",
-						args: data,
-						callback: function (response) {
-							if ("response", response.message) {
-
-								let fileContainer = document.querySelector(".col-lg-16"); // Adjust selector as needed
-								let newFileBox = document.createElement("div");
-								newFileBox.className = "file-box";
-								newFileBox.innerHTML = `
-									<div class="file">
-									<a href="#" class="open-folder" data-folder-name="${values.value}">
-										<span class="corner"></span>
-											<div class="file-body">
-												<svg class="icon" style="width: 71px; height: 75px" aria-hidden="true">
-													<use href="#icon-folder-normal-large"></use>
-												</svg>
-								
-												</div>
-										<div class="file-name">
-											${values.value}
-											<br>
-											<small>Added: Jan 22, 2014</small>
-										</div>
-									</a>
-								</div>
-								`;
-								fileContainer.prepend(newFileBox);
-
-								frappe.call({
-									method: "frappe.client.insert",
-									args: {
-										doc: {
-											doctype: "Drive Manager",
-											file_name: values.value,
-											attached_to_name: response.message.name,
-											is_folder: 1,
-											folder: self.current_folder || "Home",
-											created_by: frappe.session.user,
-
-											// add other fields if needed
-										}
-									},
-									callback: function (res) {
-										frappe.msgprint(__("Folder '{0}' created and saved in Drive Manager", [values.value]));
-									}
-								});
-
-								frappe.msgprint(__("Folder '{0}' created successfully", [values.value]));
-							}
-						},
-						error: function (err) {
-							frappe.msgprint(__("Error creating folder: {0}", [err.message]));
-						},
-					});
-				},
-				__("Enter folder name"),
-				__("Create")
-			);
 		});
 	}
 
@@ -764,7 +658,7 @@ class MyDrive {
 					return;
 				}
 				
-				console.log(`Uploading ${validFiles.length} files from folder`);
+				console.log(`Uploading ${validFiles.length} files from folder ${self.current_folder}`);
 				
 				// Prepare folder structure data
 				const folderData = self.prepareFolderData(validFiles);
@@ -777,16 +671,114 @@ class MyDrive {
 		});
 	}
 
+	newFolder(){
+		let self = this
+		this.page.add_action_item(__(' <i class="fa fa-plus"></i> New Folder'), function () {
+			console.log("current_folder : ",self.current_folder);
+			frappe.prompt(
+				__("Name"),
+				(values) => {
+					if (values.value.includes("/")) {
+						create_new_folder
+						frappe.throw(__("Folder name should not include '/' (slash)"));
+					}
+					const data = {
+						file_name: values.value,
+						folder: self.current_folder || "Home", // Default folder
+					};
+					console.log(values.value);
+					frappe.call({
+						method: "frappe.core.api.file.create_new_folder",
+						args: data,
+						callback: function (response) {
+							if (response.message) {
+								console.log(response.message);
+								let file_id = response.message.name
+								let file_name = response.message.file_name
+								console.log(file_id,file_name);
+								let fileContainer = document.querySelector(".col-lg-16"); // Adjust selector as needed
+								let newFileBox = document.createElement("div");
+								newFileBox.className = "file-box";
+								newFileBox.innerHTML = `
+									<div class="file">
+									<a href="#" class="open-folder" data-folder-name="${file_id}">
+										<span class="corner"></span>
+											<div class="file-body">
+												<svg class="icon" style="width: 71px; height: 75px" aria-hidden="true">
+													<use href="#icon-folder-normal-large"></use>
+												</svg>
+								
+												</div>
+										<div class="file-name">
+											${file_name}
+											<br>
+											<small>Added: Jan 22, 2014</small>
+										</div>
+									</a>
+								</div>
+								`;
+								fileContainer.prepend(newFileBox);
 
-	
+								frappe.call({
+									method: "frappe.client.insert",
+									args: {
+										doc: {
+											doctype: "Drive Manager",
+											file_name: file_name,
+											attached_to_name: file_id,
+											is_folder: 1,
+											folder: self.current_folder || "Home",
+											created_by: frappe.session.user,
+
+											// add other fields if needed
+										}
+									},
+									callback: function (res) {
+										console.log("callback of drive manager",res);
+
+										if(res){
+											self.openFolder()
+										}
+										
+										// frappe.msgprint(__("Folder '{0}' created and saved in Drive Manager", [values.value]));
+										// setTimeout(() => {
+										// 	frappe.show_alert({
+										// 		message: __('Folder {0} files uploaded successfully!', [values.value]),
+										// 		indicator: 'green'
+										// 	}, 3);
+										// },700);
+									}
+								});
+
+								setTimeout(() => {
+									frappe.show_alert({
+										message: __('Folder {0} created successfully! inside {1}', [values.value,self.current_folder]),
+										indicator: 'green'
+									}, 3);
+								},700);
+
+								// frappe.msgprint(__("Folder '{0}' created successfully", [values.value]));
+							}
+						},
+						error: function (err) {
+							frappe.msgprint(__("Error creating folder: {0}", [err.message]));
+						},
+					});
+				},
+				__("Enter folder name"),
+				__("Create")
+			);
+		});
+	}
 
 	backButton(){
-		this.page.add_inner_button(__('Back'), () => {
-			console.log("Back button clicked");
-			// self.page.get_inner_group_button(__('Back')).hide();
-			this.goBack();
-		});
-		this.backButtonAdded = true;
+		console.log("current_folder :",this.current_folder);
+		if (this.current_folder !== "Home"){
+			this.page.add_inner_button(__('Back'), () => {
+				console.log("Back button clicked");
+				this.Back();
+			});
+		}
 	}
 
 	makeURL(folder){
@@ -795,14 +787,11 @@ class MyDrive {
 		this.current_folder = folder;
 		this.page.set_title(__(this.current_folder));
 		let base_url = window.location.pathname
-		console.log("base_url", base_url);
+		// console.log("base_url", base_url);
 		let newUrl = base_url.split("my-drive")[0] + "my-drive/" + this.current_folder;
-		console.log(`openFolder ${folder} newUrl`, newUrl);
+		// console.log(`open Folder ${folder} newUrl`, newUrl);
 		history.pushState({ folder:folder}, "", newUrl);
 	}
-
-	// New folder upload functionality
-
 	prepareFolderData(files) {
 		let self = this;
 		const folderStructure = [];
@@ -847,33 +836,21 @@ class MyDrive {
 		
 		xhr.onload = function () {
 			if (xhr.status === 200) {
-				console.log("Folder uploaded successfully:", xhr.responseText);
+				// console.log("Folder uploaded successfully:", xhr.responseText);
 				let response = JSON.parse(xhr.responseText);
-				console.log(`response ${response}`);
-
+				// console.log(`response ${JSON.stringify(response)}`);
 				if(response.message.success){
-					console.log("uploading files",response.message.uploaded_files);
 					let files = response.message.uploaded_files
 					let folder = response.message.folder
-					console.log(`response files :${files}`);
-					console.log(`response folders : ${folder}`);
+					self.handleFilePermissions(files)
 					$(".empty-state-1").remove();
 					self.makeURL(folder)
 					self.backButton()
-					self.addFileToUI(files);
+					self.FileUI(files)
+					
 				}else{
 					frappe.msgprint(__("Folder uploaded successfully! {0} files uploaded.", [response.message.total_uploaded]));
 				}
-				
-				// Handle successful folder upload
-				// if (response.message && response.message.uploaded_files) {
-				// 	console.log("response of folder upload",response.message,response.message.uploaded_files);
-				// 	$(".empty-state-1").remove();
-				// 	response.message.uploaded_files.forEach(fileInfo => {
-				// 		self.addFileToUI(fileInfo);
-				// 	});
-				// 	frappe.msgprint(__("Folder uploaded successfully! {0} files uploaded.", [response.message.uploaded_files.length]));
-				// }
 			} else {
 				console.error("Folder upload failed:", xhr.statusText);
 				frappe.msgprint(__("Error uploading folder: {0}", [xhr.statusText]));
@@ -896,53 +873,19 @@ class MyDrive {
 		xhr.send(form_data);
 	}
 
-	handleFileUploadSuccess(responseText, file) {
-		let self = this;
-		$(".empty-state-1").remove();
-		console.log("File uploaded successfully:", responseText);
-		let response = JSON.parse(responseText);
-		let file_url = response.message.file_url;
-		let file_name = response.message.file_name;
-		let file_id = response.message.file_id;
-		let drive_id = response.message.drive_id;
-
-		let permissions = {
-			drive_id: drive_id,
-			file_id: file_id,
-			read: 1,
-			write: 1,
-			delete: 1,
-			download: 1,
-			share: 1,
-			create: 1,
-		}
-
-		self.permissions.push(permissions);
-		console.log("File and Drive Manager created successfully: Permissions:", self.permissions);
-		self.addFileToUI({
-			file_url: file_url,
-			file_name: file_name,
-			file_id: file_id,
-			drive_id: drive_id,
-			file: file
-		});
-	}
-
-	addFileToUI(files) {
-		// console.log("Inside Add files to UI the res", files);
+	FileUI(files) {
 		let fileContainer = document.querySelector(".col-lg-16");
 		const allowedTypes = ["pdf", "xls", "xlsx", "doc", "docx"];
+
+		console.log("inside files UI"+files);
 		
-		// Add files with staggered animation
 		files.forEach((file, index) => {
+
 			setTimeout(() => {
 				// Create a NEW element for EACH file
 				let newFileBox = document.createElement("div");
-
-				
 				// Determine file type
 				const fileExtension = file.file_name.split('.').pop().toLowerCase();
-				
 				if (allowedTypes.includes(fileExtension)) {
 					// Document file
 					newFileBox.className = "file-box";
@@ -969,22 +912,22 @@ class MyDrive {
 					// Image file
 					newFileBox.className = "file-box";
 					newFileBox.innerHTML = `
-						<div class="file">
-							<div class="file-header">
-								<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id="${file.file_id}" data-docname="${file.drive_id}">
+					<div class="file">
+						<div class="file-header">
+							<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id="${file.file_id}" data-docname="${file.drive_id}">
+						</div>
+						<a href="#" class="image-preview" data-file-url="${file.file_url}" data-file-id="${file.file_id}" data-drive-id="${file.drive_id}">
+							<span class="corner"></span>
+							<div class="image">
+								<img alt="image" class="img-responsive" src="${file.file_url}">
 							</div>
-							<a href="#" class="image-preview" data-file-url="${file.file_url}" data-file-id="${file.file_id}" data-drive-id="${file.drive_id}">
-								<span class="corner"></span>
-								<div class="image">
-									<img alt="image" class="img-responsive" src="${file.file_url}">
-								</div>
-								<div class="file-name">
-									${file.file_name}
-									<br>
-									<small>Just now</small>
-								</div>
-							</a>
-						</div>`;
+							<div class="file-name">
+								${file.file_name}
+								<br>
+								<small>Just now</small>
+							</div>
+						</a>
+					</div>`;
 				}
 				
 				// Add fade-in animation
@@ -1002,7 +945,7 @@ class MyDrive {
 				}, 50);
 				
 				// Show upload progress message
-				console.log(`File ${index + 1}/${files.length} added to UI: ${file.file_name}`);
+				console.log(`File ${index + 1}/${files.length} added ${file.file_name} to UI`);
 				
 			}, index * 300); // 300ms delay between each file
 		});
@@ -1016,7 +959,25 @@ class MyDrive {
 		}, files.length * 300 + 500);
 	}
 
-	
+	openFolder() {
+		this.goFolders();
+		let self = this;
+		// Use event delegation - attach one listener to a parent element
+		$(document).off("click", ".open-folder").on("click", ".open-folder", function (event) {
+			event.preventDefault();  // Prevent default behavior
+			$('.ellipsis').show();
+			let folder = $(this).data("folder-name");
+			self.current_folder = folder
+			self.page.set_title(__(folder));
+			let base_url = window.location.pathname
+			let newUrl = base_url.split("my-drive")[0] + "my-drive/" + folder;
+			history.pushState({ folder: folder }, "", newUrl);
+			self.backButton()
+			self.FolderContent()	
+			// console.log("openFolder ENDS HERE...");
+		});
+	}
+
 	openShared() {
 		let self = this;
 		$(document).on("click", ".open-shared", function (event) {
@@ -1761,215 +1722,7 @@ class MyDrive {
 
 	}
 
-	openFolder() {
-		console.log("openFolder Started");
-		this.goFolders();
-		let self = this;
-		// Use event delegation - attach one listener to a parent element
-		$(document).off("click", ".open-folder").on("click", ".open-folder", function (event) {
-			event.preventDefault();  // Prevent default behavior
-			$('.ellipsis').show();
-			let folderName = $(this).data("folder-name");
-			console.log("openingFolder()=>", folderName);
-			console.log("data-folder-name", folderName);
-			self.current_folder = folderName
-			console.log("current_folder", self.current_folder);
-			self.page.set_title(__(folderName));
-			self.current_folder = folderName; // Store the current folder name
-
-			let base_url = window.location.pathname
-
-			console.log("base_url", base_url);
-
-
-			let newUrl = base_url.split("my-drive")[0] + "my-drive/" + folderName;
-
-			console.log("openFolder newUrl ", newUrl);
-			history.pushState({ folder: folderName }, "", newUrl);
-			console.log("openFolder pushed url", newUrl);
-
-			if (!self.backButtonAdded) {
-				self.page.add_inner_button(__('Back'), () => {
-					console.log("Back button clicked");
-					// self.page.get_inner_group_button(__('Back')).hide();
-					self.goBack();
-				});
-				self.backButtonAdded = true;
-			}
-
-			frappe.call({
-				method: "photos.my_drive.page.my_drive.my_drive.get_folder_contents",
-				args: { folder_name: folderName, owner: frappe.session.user },
-				callback: function (r) {
-					if (r.message) {
-						// console.log(`Folder ${folderName} Opened: with permissions${r.message.files}`);
-
-						let permissions = r.message.files.map(file => {
-							// Check if user is not creator AND all permissions are null
-							if (frappe.session.user !== file.created_by && file.read === null && file.write === null && file.delete_file === null && file.download === null) {
-
-								// Get parent folder permissions
-								// You need to store parent folder permissions somewhere
-								// This assumes you have a self.folderPermissions object available
-								// console.log(`file - ${file.file_id} No files permissions found getting parent permission,${r.message.parent_folder_permission}`);
-
-								const isCreator = frappe.session.user === file.created_by;
-
-								// self.ParentfolderPermissions = r.message.parent_folder_permission
-
-								const ParentfolderPermissions = r.message.parent_folder_permission
-
-								const getpermissions = ParentfolderPermissions.map(per => {
-									console.log(per.write);
-									return {
-										file_id: file.file_id,
-										drive_id: file.drive_id,
-										read: per.read || 0,
-										write: per.write || 0,
-										download: per.download || 0,
-										delete: per.delete_file || 0,
-										create: isCreator
-									};
-								})
-								return getpermissions[0]
-
-							} else {
-								// Use existing file permissions
-								return {
-									file_id: file.file_id,
-									drive_id: file.drive_id,
-									read: file.read,
-									write: file.write,
-									download: file.download,
-									delete_file: file.delete_file,
-									create: frappe.session.user === file.created_by ? 1 : 0
-								};
-							}
-						});
-
-						self.permissions = permissions
-
-						// console.log("Permissions set to",self.permissions)
-
-
-
-						let files = r.message.files;
-						let fileDisplayArea = document.querySelector(".col-md-9 .ibox-content .col-lg-16");
-						fileDisplayArea.innerHTML = "";
-
-						// console.log(files);
-
-						if (files.length === 0) {
-							addEmptyState()
-							// fileDisplayArea.innerHTML = `<p class="center">This folder is empty. Upload files here.</p>`;
-						} else {
-							files.forEach(file => {
-								if (file.is_folder) {
-									console.log("if part its a folder");
-									let fileElement = document.createElement("div");
-									fileElement.classList.add("file-box");
-									fileElement.innerHTML = `
-										<div class="file">
-										<div class="file-header">
-                                                <input class="level-item checkbox hidden-xs" type="checkbox" data-file-id=${file.file_id} data-docname=${file.drive_id}>
-                                        </div>
-										<a href="#" class="open-folder" data-folder-name="${file.file_id}">
-											<span class="corner"></span>
-												<div class="file-body">
-													<svg class="icon" style="width: 71px; height: 75px" aria-hidden="true">
-														<use href="#icon-folder-normal-large"></use>
-													</svg>
-												</div>
-											<div class="file-name">
-												${file.file_name}
-												<br>
-												<small>${file.creation}</small>
-											</div>
-										</a>
-									</div>
-									`;
-									fileDisplayArea.appendChild(fileElement);
-								} else {
-									if (file.file_type === "XLSX" || file.file_type === "XLS" || file.file_type === "CSV") {
-										let fileElement = document.createElement("div");
-										fileElement.classList.add("file-box");
-										fileElement.innerHTML = `
-												<div class="file">
-													<div class="file-header">
-															<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id=${file.file_id} data-docname=${file.drive_id}>
-													</div>
-													<a href="#" class="open-spreadsheet" data-file-url="${file.file_url}" data-file-id=${file.file_id}>
-														<span class="corner"></span>
-														
-														<div class="file-body">
-                                                        	<img alt="File Icon" style="width: 75px; height: 90px" class="icon" src="/files/xls.png">
-                                                		</div>
-														<div class="file-name">
-															${file.file_name}
-															<br>
-															<small>${file.creation}</small>
-														</div>
-													</a>
-												</div>
-											`;
-										fileDisplayArea.appendChild(fileElement);
-									} else if (file.file_type === "PDF") {
-										let fileElement = document.createElement("div");
-										fileElement.classList.add("file-box");
-										fileElement.innerHTML = `
-												<div class="file">
-													<div class="file-header">
-														<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id=${file.file_id} data-docname=${file.drive_id}>
-													</div>
-													<a href="#" class="open-pdf" data-file-url="${file.file_url}" data-file-id=${file.file_id}>
-														<span class="corner"></span>
-
-														<div class="file-body">
-															<img alt="File Icon" style="width: 77px; height: 90px" class="icon" src="/files/file.png">
-														</div>
-														<div class="file-name">
-															${file.file_name}
-															<br>
-															<small>${file.creation}</small>
-														</div>
-													</a>
-												</div>
-											`;
-										fileDisplayArea.appendChild(fileElement);
-									} else {
-										console.log("else part in open folder and image file id", file.file_id);
-										let fileElement = document.createElement("div");
-										fileElement.classList.add("file-box");
-										fileElement.innerHTML = `
-											<div class="file">
-												<div class="file-header">
-													<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id=${file.file_id} data-docname=${file.drive_id}>
-												</div>
-												<a href="#" class="image-preview" data-file-url="${file.file_url}" data-file-id=${file.file_id} data-drive-id=${file.drive_id} data-tags="${file.persons}">
-													<span class="corner"></span>
-													<div class="image">
-														<img alt="image" class="img-responsive" src=${file.file_url}>
-													</div>
-													<div class="file-name">
-														${file.file_name}
-														<br>
-														<small>${file.creation}</small>
-													</div>
-												</a>
-											</div>
-											`;
-										fileDisplayArea.appendChild(fileElement);
-									}
-								}
-							});
-						}
-					}
-				}
-			});
-			console.log("openFolder ENDS HERE...");
-
-		});
-	}
+	
 
 	imagePreview() {
 		let self = this
@@ -3390,7 +3143,6 @@ class MyDrive {
 			self.renderTemplate("Home");
 			self.page.set_title(__('Home'));
 			self.current_folder = "Home"; // Reset current folder to Home
-			self.folder_history = []; // Clear folder history
 			history.pushState({ folder: "Home" }, "", "/app/my-drive");
 			$('.btn .ellipsis').hide();
 			// document.querySelector('[data-label="Back"]').style.display = 'none';
@@ -3415,10 +3167,7 @@ class MyDrive {
 					if (r.message) {
 						console.log("Folders:", r.message.folders);
 
-						if (r.message.folders.length === 0) {
-							addEmptyState()
-							// fileDisplayArea.innerHTML = `<p class="center"> No Folders Uploaded..</p>`;
-						} else {
+						if (r.message.folders.length !== 0) {
 							r.message.folders.forEach(file => {
 								console.log("if part its a folder");
 								let fileElement = document.createElement("div");
@@ -3443,6 +3192,9 @@ class MyDrive {
 								fileDisplayArea.appendChild(fileElement);
 
 							});
+							// fileDisplayArea.innerHTML = `<p class="center"> No Folders Uploaded..</p>`;
+						} else {
+							addEmptyState()
 						}
 
 					}
@@ -3453,106 +3205,152 @@ class MyDrive {
 
 	}
 
-	goBack() {
-		console.log("Back Started...");
-		let self = this;
-		// Get the current folder path
-		let currentPath = self.current_folder;
-		console.log("Current path before going back:", currentPath);
+	FolderContent(){
+		console.log("get folder content folder :",this.current_folder);
+		frappe.call({
+			method: "photos.my_drive.page.my_drive.my_drive.get_folder_contents",
+			args: { folder: this.current_folder},
+			callback: function (r) {
+				if (r.message) {
+					let permissions = r.message.files.map(file => {
+						// Check if user is not creator AND all permissions are null
+						if (frappe.session.user !== file.created_by && file.read === null && file.write === null && file.delete_file === null && file.download === null) {
+							// Get parent folder permissions
+							// You need to store parent folder permissions somewhere
+							// This assumes you have a self.folderPermissions object available
+							// console.log(`file - ${file.file_id} No files permissions found getting parent permission,${r.message.parent_folder_permission}`);
 
-		// Split by "/" to get folder structure
-		let pathParts = currentPath.split("/");
+							const isCreator = frappe.session.user === file.created_by;
 
-		console.log("self.current_folder split and remove the last one ", pathParts);
-		// Remove the last folder to go up one level
-		pathParts.pop();
+							// self.ParentfolderPermissions = r.message.parent_folder_permission
 
-		console.log("removed last folder now the parentFolder path is", pathParts);
+							const ParentfolderPermissions = r.message.parent_folder_permission
 
-		// Join remaining parts to get parent folder path
-		let parentFolder = pathParts.join("/");
-		self.current_folder = parentFolder; // Update current folder
-		console.log("parentFolder[] joined path:", parentFolder);
-		if (parentFolder === "") {
-			parentFolder = "Home"; // Default to Home if we've gone all the way back
-		}
+							const getpermissions = ParentfolderPermissions.map(per => {
+								console.log(per.write);
+								return {
+									file_id: file.file_id,
+									drive_id: file.drive_id,
+									read: per.read || 0,
+									write: per.write || 0,
+									download: per.download || 0,
+									delete: per.delete_file || 0,
+									create: isCreator
+								};
+							})
+							return getpermissions[0]
 
-
-		if (parentFolder === "Home") {
-			console.log("goBack  home ");
-
-			let basePath = "/app/my-drive";
-			let newUrl = basePath
-			$('.ellipsis').hide();
-			console.log("newUrl", newUrl);
-
-			history.pushState({ folder: parentFolder }, "", newUrl);
-			// self.current_folder = newUrl;
-			self.folder_history.pop();
-
-			self.renderTemplate(parentFolder)
-			self.page.set_title(__(parentFolder));
-
-
-		} else {
-			console.log("inside else its not Home");
-			let create_url = window.location.pathname.split("/").slice(0, -1).join("/")
-			console.log("after split create url", create_url);
-
-			history.pushState({ folder: parentFolder }, "", create_url);
-			self.page.set_title(__(parentFolder));
-			self.current_folder = parentFolder;
-
-			self.folder_history.pop();
-
-			// Hide back button if we're at the root
-			if (parentFolder === "Home" || self.folder_history.length === 0) {
-				self.page.get_inner_group_button(__('Back')).toggle(false);
-			}
-
-			// Load the parent folder contents
-			frappe.call({
-				method: "photos.my_drive.page.my_drive.my_drive.get_folder_contents",
-				args: { folder_name: parentFolder, owner: frappe.session.user },
-				callback: function (response) {
-					if (response.message) {
-						// console.log("Folder contents:", response.message);
-						let files = response.message.files;
-						let fileDisplayArea = document.querySelector(".col-md-9 .ibox-content .col-lg-16");
-						fileDisplayArea.innerHTML = "";
-
-						if (files.length === 0) {
-							fileDisplayArea.innerHTML = "<p>This folder is empty. Upload files here.</p>";
 						} else {
-							files.forEach(file => {
-								// console.log("file", file);
-								if (file.is_folder) {
+							// Use existing file permissions
+							return {
+								file_id: file.file_id,
+								drive_id: file.drive_id,
+								read: file.read,
+								write: file.write,
+								download: file.download,
+								delete_file: file.delete_file,
+								create: frappe.session.user === file.created_by ? 1 : 0
+							};
+						}
+					});
+
+					self.permissions = permissions
+
+					// console.log("Permissions set to",self.permissions)
+
+					let files = r.message.files;
+					let fileDisplayArea = document.querySelector(".col-md-9 .ibox-content .col-lg-16");
+					fileDisplayArea.innerHTML = "";
+
+					// console.log(files);
+
+					if (files.length === 0) {
+						addEmptyState()
+						// fileDisplayArea.innerHTML = `<p class="center">This folder is empty. Upload files here.</p>`;
+					} else {
+						files.forEach(file => {
+							if (file.is_folder) {
+								// console.log("if part its a folder");
+								let fileElement = document.createElement("div");
+								fileElement.classList.add("file-box");
+								fileElement.innerHTML = `
+									<div class="file">
+									<div class="file-header">
+											<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id=${file.file_id} data-docname=${file.drive_id}>
+									</div>
+									<a href="#" class="open-folder" data-folder-name="${file.file_id}">
+										<span class="corner"></span>
+											<div class="file-body">
+												<svg class="icon" style="width: 71px; height: 75px" aria-hidden="true">
+													<use href="#icon-folder-normal-large"></use>
+												</svg>
+											</div>
+										<div class="file-name">
+											${file.file_name}
+											<br>
+											<small>${file.creation}</small>
+										</div>
+									</a>
+								</div>
+								`;
+								fileDisplayArea.appendChild(fileElement);
+							} else {
+								if (file.file_type === "XLSX" || file.file_type === "XLS" || file.file_type === "CSV") {
 									let fileElement = document.createElement("div");
 									fileElement.classList.add("file-box");
 									fileElement.innerHTML = `
-										<div class="file">
-											<a href="#" class="open-folder" data-folder-name="${file.name}">
-												<span class="corner"></span>
-													<div class="file-body">
-														<svg class="icon" style="width: 71px; height: 75px" aria-hidden="true">
-															<use href="#icon-folder-normal-large"></use>
-														</svg>
-													</div>
-												<div class="file-name">
-													${file.file_name}
-													<br>
-													<small>${file.creation}</small>
+											<div class="file">
+												<div class="file-header">
+														<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id=${file.file_id} data-docname=${file.drive_id}>
 												</div>
-											</a>
-									</div>
-									`;
+												<a href="#" class="open-spreadsheet" data-file-url="${file.file_url}" data-file-id=${file.file_id}>
+													<span class="corner"></span>
+													
+													<div class="file-body">
+														<img alt="File Icon" style="width: 75px; height: 90px" class="icon" src="/files/xls.png">
+													</div>
+													<div class="file-name">
+														${file.file_name}
+														<br>
+														<small>${file.creation}</small>
+													</div>
+												</a>
+											</div>
+										`;
+									fileDisplayArea.appendChild(fileElement);
+								} else if (file.file_type === "PDF") {
+									let fileElement = document.createElement("div");
+									fileElement.classList.add("file-box");
+									fileElement.innerHTML = `
+											<div class="file">
+												<div class="file-header">
+													<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id=${file.file_id} data-docname=${file.drive_id}>
+												</div>
+												<a href="#" class="open-pdf" data-file-url="${file.file_url}" data-file-id=${file.file_id}>
+													<span class="corner"></span>
+
+													<div class="file-body">
+														<img alt="File Icon" style="width: 77px; height: 90px" class="icon" src="/files/file.png">
+													</div>
+													<div class="file-name">
+														${file.file_name}
+														<br>
+														<small>${file.creation}</small>
+													</div>
+												</a>
+											</div>
+										`;
 									fileDisplayArea.appendChild(fileElement);
 								} else {
+									// console.log("else part in open folder and image file id", file.file_id);
 									let fileElement = document.createElement("div");
 									fileElement.classList.add("file-box");
 									fileElement.innerHTML = `
 										<div class="file">
-											<a href="#" class="image-preview" data-file-url="${file.file_url}" data-name=${file.name}>
+											<div class="file-header">
+												<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id=${file.file_id} data-docname=${file.drive_id}>
+											</div>
+											<a href="#" class="image-preview" data-file-url="${file.file_url}" data-file-id=${file.file_id} data-drive-id=${file.drive_id} data-tags="${file.persons}">
 												<span class="corner"></span>
 												<div class="image">
 													<img alt="image" class="img-responsive" src=${file.file_url}>
@@ -3564,14 +3362,72 @@ class MyDrive {
 												</div>
 											</a>
 										</div>
-									`;
+										`;
 									fileDisplayArea.appendChild(fileElement);
 								}
-							});
-						}
+							}
+						});
 					}
 				}
-			});
+			}
+		});
+	}
+
+	Back() {
+		let self = this;
+		console.log("Back clicked... current folder was :",this.current_folder);
+		let currentPath = self.current_folder;
+		let path_list = currentPath.split("/");
+		// console.log("self.current_folder splited :", path_list);
+		path_list.pop();
+		// console.log("after removed last folder path_list :", path_list);
+
+		// Join remaining parts to get parent folder path that means its current folder
+		let folder = path_list.join("/");
+
+		this.current_folder = folder; // Update current folder
+		if (folder === "") {
+			folder = "Home"; // Default to Home if we've gone all the way back
+		}
+
+
+		if (folder === "Home") {
+			console.log("goBack  home ");
+
+			let basePath = "/app/my-drive";
+			let newUrl = basePath
+			$('.ellipsis').hide();
+			console.log("newUrl", newUrl);
+
+			history.pushState({ folder: folder }, "", newUrl);
+			// self.current_folder = newUrl;
+
+			self.renderTemplate(folder)
+			// self.page.set_title(__(parentFolder));
+
+
+		} else {
+			console.log("inside else its not Home");
+			let create_url = window.location.pathname.split("/").slice(0, -1).join("/")
+			console.log("after splited url", create_url,"folder :",folder);
+
+			history.pushState({ folder: folder }, "", create_url);
+			self.page.set_title(__(folder));
+			self.current_folder = folder;
+
+
+			// Hide back button if we're at the root
+			if (folder === "Home") {
+				console.log("folder is Home");
+				self.page.get_inner_group_button(__('Back')).toggle(false);
+			}
+
+			// Load the parent folder contents
+
+			this.FolderContent()
+
+
+			
 		}
 	}
 }
