@@ -30,7 +30,7 @@ class MyDrive {
 				// this.fileUpload();
 				this.driveAccess()
 		})
-		this.renderTemplate(this.current_folder);
+		this.renderTemplate();
 		this.imagePreview()
 		this.PDFpreview();
 		this.bindCheckboxEvents();
@@ -56,21 +56,20 @@ class MyDrive {
 
 	}
 
-
-
-	renderTemplate(folder) {
+	renderTemplate() {
+		console.log("rendering");
 		console.log("current_folder", this.current_folder, "window location", window.location.pathname);
 		// $(".page-wrapper").html("")
-		this.page.set_title(__(folder));
+		this.page.set_title(__(this.current_folder));
 
 		if (window.location.pathname !== "/app/my-drive") {
 			console.log("window.location was ", window.location.pathname);
-			history.pushState({ folder: "Home" }, "", "/app/my-drive");
+			history.pushState({ folder: this.current_folder }, "", "/app/my-drive");
 		}
 
 		frappe.call({
 			method: "photos.my_drive.page.my_drive.my_drive.render_template",
-			args: { owner: frappe.session.user, folder: folder },
+			args: { owner: frappe.session.user, folder: this.current_folder },
 			callback: (r) => {
 				if (r.message) {
 					console.log("renderTemplate responce", r.message);
@@ -112,7 +111,7 @@ class MyDrive {
 						addEmptyState();
 						return;
 					}
-					this.current_folder = folder;
+					// this.current_folder = folder;
 					this.openFolder();
 					// this.imagePreview()
 				}
@@ -604,7 +603,7 @@ class MyDrive {
 							// console.log(`response folders : ${folder}`);
 							$(".empty-state-1").remove();
 							self.makeURL(folder)
-							self.backButton()
+							self.BackButton()
 							self.FileUI(files)
 						}else{
 							frappe.msgprint(__("File uploaded successfully! {0} files uploaded.", [response.message.total_uploaded]));
@@ -771,16 +770,7 @@ class MyDrive {
 		});
 	}
 
-	backButton(){
-		console.log("current_folder :",this.current_folder);
-		if (this.current_folder !== "Home"){
-			this.page.add_inner_button(__('Back'), () => {
-				console.log("Back button clicked");
-				this.Back();
-			});
-		}
-	}
-
+	
 	makeURL(folder){
 		// let self = this
 		console.log(`making URL for :${folder} nd the current folder ${this.current_folder}`);
@@ -845,7 +835,7 @@ class MyDrive {
 					self.handleFilePermissions(files)
 					$(".empty-state-1").remove();
 					self.makeURL(folder)
-					self.backButton()
+					self.BackButton()
 					self.FileUI(files)
 					
 				}else{
@@ -972,8 +962,8 @@ class MyDrive {
 			let base_url = window.location.pathname
 			let newUrl = base_url.split("my-drive")[0] + "my-drive/" + folder;
 			history.pushState({ folder: folder }, "", newUrl);
-			self.backButton()
-			self.FolderContent()	
+			self.FolderContent()
+			self.BackButton()
 			// console.log("openFolder ENDS HERE...");
 		});
 	}
@@ -3151,7 +3141,7 @@ class MyDrive {
 
 	goFolders() {
 		let self = this
-		console.log("goFolders is active from openFolder");
+		// console.log("goFolders is active from openFolder");
 		$(document).off("click", ".go-folders");
 		$(document).on("click", ".go-folders", function (event) {
 			self.page.set_title(__("Folders"));
@@ -3206,7 +3196,7 @@ class MyDrive {
 	}
 
 	FolderContent(){
-		console.log("get folder content folder :",this.current_folder);
+		console.log("get folder content for folder :",this.current_folder);
 		frappe.call({
 			method: "photos.my_drive.page.my_drive.my_drive.get_folder_contents",
 			args: { folder: this.current_folder},
@@ -3254,7 +3244,7 @@ class MyDrive {
 						}
 					});
 
-					self.permissions = permissions
+					this.permissions = permissions
 
 					// console.log("Permissions set to",self.permissions)
 
@@ -3371,63 +3361,55 @@ class MyDrive {
 				}
 			}
 		});
+		
 	}
+	
+	BackButton(){
+		if (this.current_folder !== "Home"){
+			this.page.add_inner_button(__('Back'), () => {
+				this.Back();
+			});
+		}
+	}
+
 
 	Back() {
 		let self = this;
-		console.log("Back clicked... current folder was :",this.current_folder);
+		console.log("Back clicked...current folder was :",this.current_folder);
 		let currentPath = self.current_folder;
 		let path_list = currentPath.split("/");
 		// console.log("self.current_folder splited :", path_list);
-		path_list.pop();
-		// console.log("after removed last folder path_list :", path_list);
-
-		// Join remaining parts to get parent folder path that means its current folder
-		let folder = path_list.join("/");
-
-		this.current_folder = folder; // Update current folder
-		if (folder === "") {
-			folder = "Home"; // Default to Home if we've gone all the way back
-		}
-
-
-		if (folder === "Home") {
-			console.log("goBack  home ");
-
-			let basePath = "/app/my-drive";
-			let newUrl = basePath
+		console.log("before poped lenth is",path_list.length,path_list);
+		let popped_element = path_list.pop();
+		console.log("popped element :", popped_element);
+		// path_list.pop();
+		const folder = path_list.join("/");
+		const url = window.location.pathname.split("/").slice(0, -1).join("/")
+		console.log("url",url,"folder :",folder);
+		if(path_list.length == 1){
 			$('.ellipsis').hide();
-			console.log("newUrl", newUrl);
+			console.log("its home :",path_list,"current folder :",this.current_folder);
+			this.current_folder = folder
+			console.log("window location",window.location.pathname);
+			
+			// console.log("url",url);
+			console.log("after splited url",url,"folder :",folder);
+			history.pushState({ folder: folder }, "", url);
+			self.page.set_title(__(folder));
+			// console.log("folder",folder);
+			// this.current_folder = folder;
+			self.renderTemplate()
 
-			history.pushState({ folder: folder }, "", newUrl);
-			// self.current_folder = newUrl;
-
-			self.renderTemplate(folder)
-			// self.page.set_title(__(parentFolder));
-
-
-		} else {
-			console.log("inside else its not Home");
-			let create_url = window.location.pathname.split("/").slice(0, -1).join("/")
-			console.log("after splited url", create_url,"folder :",folder);
-
-			history.pushState({ folder: folder }, "", create_url);
+		}else{
+			console.log("else not Home");
+			console.log("after poped lenth is",path_list.length, path_list);
+			// let url = window.location.pathname.split("/").slice(0, -1).join("/")
+		
+			history.pushState({ folder: folder }, "", url);
 			self.page.set_title(__(folder));
 			self.current_folder = folder;
 
-
-			// Hide back button if we're at the root
-			if (folder === "Home") {
-				console.log("folder is Home");
-				self.page.get_inner_group_button(__('Back')).toggle(false);
-			}
-
-			// Load the parent folder contents
-
 			this.FolderContent()
-
-
-			
 		}
 	}
 }
