@@ -877,20 +877,49 @@ class MyDrive {
 				// Determine file type
 				const fileExtension = file.file_name.split('.').pop().toLowerCase();
 				if (allowedTypes.includes(fileExtension)) {
-					// Document file
+
+					let iconSrc = "";
+					let linkClass = "";
+						
+					switch (fileExtension) {
+						case "xls":
+						case "xlsx":
+						case "csv":
+							iconSrc = "/assets/photos/xls.png";
+							linkClass = "open-spreadsheet";
+							break;
+							
+						case "pdf":
+							iconSrc = "/assets/photos/file.png";
+							linkClass = "open-pdf";
+							break;
+						// case "doc":
+						// case "docx":
+						// 	iconSrc = "/assets/photos/word.png";
+						// 	linkClass = "open-document";
+						// 	break;
+							
+						// default:
+						// 	iconSrc = "/assets/photos/file.png";
+						// 	linkClass = "open-file";
+						// 	break;
+					}
+
+
+
+
 					newFileBox.className = "file-box";
 					newFileBox.innerHTML = `
 						<div class="file">
 							<div class="file-header">
 								<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id="${file.file_id}" data-docname="${file.drive_id}">
 							</div>
-							<a href="#" class="open-spreadsheet" data-file-url="${file.file_url}" data-name="${file.file_id}">
+							<a href="#"  class="${linkClass}" data-file-url="${file.file_url}" data-name="${file.file_id}">
 								<span class="corner"></span>
-								<div class="file-body">
-									<svg class="icon" style="width: 71px; height: 75px" aria-hidden="true">
-										<use href="#icon-file-large"></use>
-									</svg>
-								</div>
+								 <div class="file-body">
+                                	<img alt="File Icon" style="width: 77px; height: 90px" class="icon" src="${iconSrc}">
+                                </div>
+								
 								<div class="file-name">
 									${file.file_name}
 									<br>
@@ -1737,8 +1766,6 @@ class MyDrive {
 			let creation_date = $(this).find("small").text().trim();
 			let fileType = file_url.split('.').pop().toUpperCase() || "Unknown type";
 
-
-
 			if(tags){
 				tag_list = tags.split(",")
 				console.log("tag_list :", tag_list);
@@ -1791,9 +1818,6 @@ class MyDrive {
 				console.log("taglist is empty");
 			}
 
-
-			
-
 			self.permissions.forEach(permission => {
 				console.log("permission.file_id", permission.file_id, "file_id", file_id);
 				if (permission.file_id === file_id) {
@@ -1802,7 +1826,6 @@ class MyDrive {
 				} else {
 					console.log("No permission found for file_id:", file_id);
 				}
-
 			});
 
 			let userPermission = self.permissions.find(permission => permission.file_id === file_id);
@@ -3196,15 +3219,18 @@ class MyDrive {
 	}
 
 	FolderContent(){
+		let self = this
 		console.log("get folder content for folder :",this.current_folder);
 		frappe.call({
 			method: "photos.my_drive.page.my_drive.my_drive.get_folder_contents",
 			args: { folder: this.current_folder},
 			callback: function (r) {
 				if (r.message) {
+					console.log(r.message.files);
 					let permissions = r.message.files.map(file => {
 						// Check if user is not creator AND all permissions are null
 						if (frappe.session.user !== file.created_by && file.read === null && file.write === null && file.delete_file === null && file.download === null) {
+							console.log("Not creator so frappe.session.user :",frappe.session.user);
 							// Get parent folder permissions
 							// You need to store parent folder permissions somewhere
 							// This assumes you have a self.folderPermissions object available
@@ -3232,21 +3258,23 @@ class MyDrive {
 
 						} else {
 							// Use existing file permissions
+							console.log("creator",file.created_by);
 							return {
 								file_id: file.file_id,
 								drive_id: file.drive_id,
-								read: file.read,
-								write: file.write,
-								download: file.download,
-								delete_file: file.delete_file,
+								read: file.read || 0,
+								write: file.write || 0,
+								download: file.download ||0,
+								delete_file: file.delete_file || 0,
 								create: frappe.session.user === file.created_by ? 1 : 0
 							};
 						}
 					});
 
-					this.permissions = permissions
+					console.log("folder files permissions", permissions);
 
-					// console.log("Permissions set to",self.permissions)
+					self.permissions = permissions
+					console.log("Permissions created",this.permissions)
 
 					let files = r.message.files;
 					let fileDisplayArea = document.querySelector(".col-md-9 .ibox-content .col-lg-16");
@@ -3297,7 +3325,7 @@ class MyDrive {
 													<span class="corner"></span>
 													
 													<div class="file-body">
-														<img alt="File Icon" style="width: 75px; height: 90px" class="icon" src="/files/xls.png">
+														<img alt="File Icon" style="width: 75px; height: 90px" class="icon" src="/assets/photos/xls.png">
 													</div>
 													<div class="file-name">
 														${file.file_name}
@@ -3320,7 +3348,7 @@ class MyDrive {
 													<span class="corner"></span>
 
 													<div class="file-body">
-														<img alt="File Icon" style="width: 77px; height: 90px" class="icon" src="/files/file.png">
+														<img alt="File Icon" style="width: 77px; height: 90px" class="icon" src="/assets/photos/file.png">
 													</div>
 													<div class="file-name">
 														${file.file_name}
