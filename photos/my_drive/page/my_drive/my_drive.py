@@ -527,8 +527,416 @@ def upload_file_to_my_drive():
 
 import os
 from frappe.utils import get_site_path
+import traceback
 
 @frappe.whitelist()
+def upload_nested_folder_to_my_drive():
+    try:
+        # Get form data
+        base_folder = frappe.form_dict.get('base_folder', '')  # Home
+        total_files = int(frappe.form_dict.get('total_files', 0))
+        total_folders = int(frappe.form_dict.get('total_folders', 0))
+        
+        print(f'Total files: {total_files}, Total folders: {total_folders}, Base folder: {base_folder}')
+        
+        if total_files == 0:
+            return {"success": False, "message": f"No files to upload (total files: {total_files})"}
+        
+        uploaded_files = []
+        created_folders_count = 0
+        
+        # Get the base my-drive physical path
+        site_path = get_site_path()
+        my_drive_path = os.path.join(site_path, 'public', 'files', 'my-drive')
+
+        print("created site_path",my_drive_path)
+        
+        # Ensure my-drive directory exists
+        if not os.path.exists(my_drive_path):
+            os.makedirs(my_drive_path)
+        
+        # Step 1: Create all folder structures first (in correct order)
+        folders_to_create = []
+        for i in range(total_folders):
+            folder_key = f"folder_to_create_{i}"
+            folder_path = frappe.form_dict.get(folder_key, '')
+            print(f'Folder key {folder_key} : folder_path {folder_path}')
+
+            if folder_path:
+                folders_to_create.append(folder_path)
+        
+        # Sort folders by depth to create parent folders first
+        folders_to_create.sort(key=lambda x: x.count('/'))
+        print("Folders to create (sorted by depth):", folders_to_create)
+        uploaded_folders = []      
+        for folder in folders_to_create:
+            if folder:
+                target_folder = f"{base_folder}/{folder}" if base_folder else folder
+                # print(f"Creating folder structure: {target_folder}")
+                if create_nested_folder_structure(target_folder, my_drive_path):
+                    created_folders_count += 1
+                # uploaded_folders_d = create_nested_folder_structure(target_folder, my_drive_path)
+                # if uploaded_folders:
+                #     print("Uploaded Folder:",uploaded_folders)
+                #     uploaded_folders.append(uploaded_folders_d)
+                #     created_folders_count += 1
+        print(f"Successfully created {created_folders_count} folder structures")
+        
+        # Step 2: Process and upload all files
+        for i in range(total_files):
+            file_key = f"file_{i}"
+            folder_path_key = f"folder_path_{i}"
+            relative_path_key = f"relative_path_{i}"
+            
+            # Get file and path info
+            uploaded_file = frappe.request.files.get(file_key)
+            folder_path = frappe.form_dict.get(folder_path_key, '')
+            relative_path = frappe.form_dict.get(relative_path_key, '')
+            
+            print(f'Processing: {file_key}={uploaded_file.filename if uploaded_file else None}, folder_path={folder_path}')
+            
+            if not uploaded_file:
+                print(f"No file found for key: {file_key}")
+                continue
+            
+            # Determine the target folder (full path where file should be saved)
+            if folder_path:
+                target_folder = f"{base_folder}/{folder_path}" if base_folder else folder_path
+            else:
+                target_folder = base_folder
+            
+            print(f"Target folder for {uploaded_file.filename}: {target_folder}")
+            
+            # Validate file type
+            allowed_extensions = ['pdf', 'xls', 'xlsx', 'doc', 'docx', 'png', 'jpg', 'jpeg', 'gif']
+            file_extension = uploaded_file.filename.split('.')[-1].lower()
+            
+            if file_extension not in allowed_extensions:
+                print(f"Skipping invalid file type: {uploaded_file.filename}")
+                continue
+            try:
+                # Get physical folder path for saving file
+                target_physical_path = get_physical_folder_path(target_folder, my_drive_path)
+                print(f"Physical path for file: {target_physical_path}")
+                
+                # Handle filename conflicts
+                filename = uploaded_file.filename
+                file_path = os.path.join(target_physical_path, filename)
+                
+                counter = 1
+                original_filename = filename
+                
+                while os.path.exists(file_path):
+                    name, ext = os.path.splitext(original_filename)
+                    filename = f"{name}_{counter}{ext}"
+                    file_path = os.path.join(target_physical_path, filename)
+                    counter += 1
+                
+                # Save the file physically
+                uploaded_file.save(file_path)
+                print(f"File saved physically at: {file_path}")
+                
+                # Create the file URL relative to the my-drive folder
+                relative_path_from_mydrive = os.path.relpath(file_path, my_drive_path)
+                file_url = f"/files/my-drive/{relative_path_from_mydrive.replace(os.sep, '/')}"
+                
+                # Create File document in Frappe
+                file_doc = frappe.get_doc({
+                    "doctype": "File",
+                    "file_name": filename,
+                    "file_url": file_url,
+                    "folder": target_folder,
+                    "is_private": 0,
+                })
+                file_doc.insert(ignore_permissions=True)
+                
+                # Create Drive Manager document
+                try:
+                    drive_doc = frappe.get_doc({
+                        "doctype": "Drive Manager",
+                        "file_name": filename,
+                        "attached_to_name": file_doc.name,
+                        "file_url": file_url,
+                        "folder": target_folder,
+                        "created_by": frappe.session.user,
+                    })
+                    drive_doc.insert(ignore_permissions=True)
+                    drive_id = drive_doc.name
+                except Exception as drive_error:
+                    print(f"Drive document creation failed: {str(drive_error)}")
+                    drive_id = "Not Created"
+                
+                uploaded_files.append({
+                    "file_id": file_doc.name,
+                    "drive_id": drive_id,
+                    "file_name": filename,
+                    "file_url": file_url,
+                    "folder": target_folder,
+                    "relative_path": relative_path,
+                    "physical_path": file_path
+                })
+                
+            except Exception as file_error:
+                print(f"Error uploading file {uploaded_file.filename}: {str(file_error)}")
+                continue
+        
+        if uploaded_files:
+            return {
+                "success": True,
+                "folder": base_folder,
+                "uploaded_files": uploaded_files,
+                # "uploaded_folders": uploaded_folders,
+                "total_uploaded": len(uploaded_files),
+                "created_folders": created_folders_count
+            }
+        else:
+            return {
+                "success": False,
+                "message": {
+                    "success": False,
+                    "message": "No files were uploaded successfully"
+                }
+            }
+            
+    except Exception as e:
+        print(f"Nested folder upload error: {str(e)}")
+        return {
+            "success": False,
+            "message": {
+                "success": False,
+                "message": f"Server error: {str(e)}"
+            }
+        }
+
+
+def create_nested_folder_structure1(folder_str,my_drive_path):
+    print(f"Creating Nested folder structure for folder_str: {folder_str}"," :", my_drive_path)
+
+    folder_path = folder_str.strip('/')  # 'Home/imges','Home/imges/aaa'
+    folder_list = folder_path.split('/') # ['Home', 'imges'],['Home', 'imges', 'aaa']
+    parent = folder_list[-2]
+    folder_name = folder_list[-1]
+    # folder_path = folder_list[:-1]
+    folder_path = "/".join(folder_list[:-1])
+    current_logical_path = ""
+    current_physical_path = my_drive_path
+
+    print("parent",parent)
+    print("folder_name",folder_name)
+    print("created physical directory",current_physical_path)
+
+    folders_created = False
+    if folder_name:
+        # current_logical_path = f"{current_logical_path}/{folder_name}" 
+        if parent == "Home":
+            current_physical_path=current_physical_path
+        else:
+            current_physical_path = os.path.join(current_physical_path, parent)
+        print(f"Physical path: {current_physical_path}")
+        if not os.path.exists(current_physical_path):
+            os.makedirs(current_physical_path)
+            print(f"Created physical directory: {current_physical_path}")
+
+        
+        
+        existing_file_folder = frappe.db.get_value("File", {
+            "file_name": folder_name,
+            "is_folder": 1,
+            "folder": parent
+        })
+
+        if not existing_file_folder:
+            print(f"Creating File folder: {folder_name} under parent: {parent}")
+
+            folder_doc = frappe.get_doc({
+                "doctype": "File",
+                "file_name": folder_name,
+                "is_folder": 1,
+                "folder": parent
+            })
+            folder_doc.insert(ignore_permissions=True)
+            existing_file_folder = folder_doc.name
+            print(f"Created File folder: {folder_name}")
+            folders_created = True
+
+        existing_drive_folder = frappe.db.get_value("Drive Manager", {
+            "attached_to_name": existing_file_folder,
+            "is_folder": 1,
+        })
+
+        if not existing_drive_folder:
+            drive_folder_doc = frappe.get_doc({
+                "doctype": "Drive Manager",
+                "file_name": folder_name,
+                "attached_to_name": existing_file_folder,
+                "is_folder": 1,
+                "folder": parent,
+                "created_by": frappe.session.user
+            })
+            drive_folder_doc.insert(ignore_permissions=True)
+            print(f"Created Drive Manager folder: {folder_name}")
+
+        return folders_created
+
+    # current_logical_path = ""
+    # current_physical_path = my_drive_path
+
+
+
+
+def create_nested_folder_structure(folder, my_drive_path):
+    print(f"Creating Nested Folder Structure For Folder: {folder}"," my_drive_path:", my_drive_path)
+    # folder = Home/imges
+    try:
+        if not folder or folder == "/" or folder == "Home":
+            return False
+        # Clean up the path
+        folder_path = folder.strip('/')
+        folders = folder_path.split('/')
+        current_logical_path = ""
+        current_physical_path = my_drive_path
+        sorted_list = folders[:-1]
+        if len(sorted_list) == 1:
+            parent = sorted_list[0]
+            print("if:",parent)
+        else:
+            print("else:",sorted_list)
+            parent = "/".join(sorted_list)
+            print("my parent : ",parent)
+
+        # join_path = "/".join(folders[:-1])
+
+
+
+
+        print("stripped folder",folder_path)
+        print("splited folder",folders)
+        print("my parent",parent)
+        print("current_physical_path",current_physical_path)
+        
+        folders_created = False
+        for folder_name in folders:
+            uploaded_folders_dict = {}
+            if not folder_name or folder_name == "Home":
+                continue
+            # Build logical path step by step
+            parent_folder = current_logical_path if current_logical_path else "Home"
+            current_logical_path = f"{current_logical_path}/{folder_name}" if current_logical_path else folder_name
+            # Build physical path
+            current_physical_path = os.path.join(current_physical_path, folder_name)
+            
+            print(f"Processing folder: {folder_name}")
+            print(f"Parent Folder: {parent_folder},my parent:{parent}")
+            print(f"Physical Path: {current_physical_path}")
+            print(f"Logical Path: {current_logical_path}")
+            
+            # Create physical directory if it doesn't exist
+            if not os.path.exists(current_physical_path):
+                os.makedirs(current_physical_path)
+                print(f"Created physical directory with Physical Path: {current_physical_path}")
+            
+            # Check if File folder already exists
+            existing_file_folder = frappe.db.get_value("File", {
+                "file_name": folder_name,
+                "is_folder": 1,
+                "folder": parent_folder
+            })
+
+            # if not frappe.db.exists("File", folder_path):
+            #     existing_file_folder = None
+
+            print("file exist is :",existing_file_folder)
+            
+            # Create File folder if it doesn't exist
+
+            if not existing_file_folder:
+                print(f"Creating File folder: {folder_name} under parent: {parent_folder}")
+
+                if folder_name == "aaa":
+                    parent_folder = f"Home/{parent_folder}"
+
+                folder_doc = frappe.get_doc({
+                    "doctype": "File",
+                    "file_name": folder_name,
+                    "is_folder": 1,
+                    "folder": parent_folder
+                })
+                folder_doc.insert(ignore_permissions=True)
+                existing_file_folder = folder_doc.name
+                uploaded_folders_dict["file_id"] = folder_doc.name
+                uploaded_folders_dict["folder_name"] = folder_name
+                print(f"Created File folder: {folder_name}")
+                folders_created = True
+            
+            # Check and create Drive Manager folder
+            existing_drive_folder = frappe.db.get_value("Drive Manager", {
+                "attached_to_name": existing_file_folder,
+                "is_folder": 1,
+            })
+
+            print("Drive exist is :",existing_file_folder)
+            
+            if not existing_drive_folder:
+                drive_folder_doc = frappe.get_doc({
+                    "doctype": "Drive Manager",
+                    "file_name": folder_name,
+                    "attached_to_name": existing_file_folder,
+                    "is_folder": 1,
+                    "folder": parent_folder,
+                    "created_by": frappe.session.user
+                })
+                
+                drive_folder_doc.insert(ignore_permissions=True)
+                uploaded_folders_dict["drive_id"] = drive_folder_doc.name
+                print(f"Created Drive Manager folder: {folder_name}")
+            
+            print("uploaded folder dict",uploaded_folders_dict)
+
+            # uploaded_folders.append(uploaded_folders_dict)
+            # return uploaded_folders_dict
+
+        return folders_created
+
+
+            # {
+            #     "file_id": file_doc.name,
+            #     "drive_id": drive_id,
+            #     "file_name": filename,
+            #     "file_url": file_url,
+            #     "folder": target_folder,
+            #     "relative_path": relative_path,
+            #     "physical_path": file_path
+            # }
+        # return uploaded_folders
+        
+    except Exception as e:
+        print(f"Error creating nested folder structure for {folder}: {str(e)}")
+        traceback.print_exc()
+        return False
+
+def get_physical_folder_path(folder_path, my_drive_path):
+    if not folder_path or folder_path == "Home":
+        return my_drive_path
+    
+    # Remove "Home" from the beginning and clean up the path
+    if folder_path.startswith("Home/"):
+        relative_path = folder_path[5:]  # Remove "Home/"
+    elif folder_path.startswith("Home"):
+        relative_path = folder_path[4:].lstrip('/')  # Remove "Home"
+    else:
+        relative_path = folder_path
+    
+    if not relative_path:
+        return my_drive_path
+    
+    # Convert to physical path
+    physical_path = os.path.join(my_drive_path, *relative_path.split('/'))
+    
+    print(f"Converted '{folder_path}' to physical path: '{physical_path}'")
+    return physical_path
+
+
+'''@frappe.whitelist()
 def upload_folder_to_my_drive():
     try:
         # Get form data
@@ -556,6 +964,7 @@ def upload_folder_to_my_drive():
         for i in range(total_files):
             folder_path_key = f"folder_path_{i}"
             folder_path = frappe.form_dict.get(folder_path_key, '')
+            print(folder_path,"folder_path")
             
             if folder_path and folder_path not in created_folders:
                 target_folder = f"{base_folder}/{folder_path}" if base_folder else folder_path
@@ -565,15 +974,20 @@ def upload_folder_to_my_drive():
                 print("created folders",created_folders)
         
         # Process each file
+
         for i in range(total_files):
             file_key = f"file_{i}"
             folder_path_key = f"folder_path_{i}"
             relative_path_key = f"relative_path_{i}"
+
+            print("file_key :",file_key,"folder_path_key :",folder_path_key,"relative_path_key :",relative_path_key)
             
             # Get file and path info
             uploaded_file = frappe.request.files.get(file_key)
             folder_path = frappe.form_dict.get(folder_path_key, '')
             relative_path = frappe.form_dict.get(relative_path_key, '')
+
+            print(f'{file_key} : {uploaded_file}, {folder_path_key} : {folder_path} , {relative_path_key} : {relative_path}')
             
             if not uploaded_file:
                 frappe.log_error(f"No file found for key: {file_key}")
@@ -594,7 +1008,6 @@ def upload_folder_to_my_drive():
             if file_extension not in allowed_extensions:
                 frappe.log_error(f"Invalid file type: {uploaded_file.filename}")
                 continue
-                
             try:
                 # Get physical folder path for saving file
                 target_physical_path = get_physical_folder_path(target_folder, my_drive_path)
@@ -605,7 +1018,7 @@ def upload_folder_to_my_drive():
                 
                 counter = 1
                 original_filename = filename
-                print("original_filename", original_filename)
+                print("original_filename", original_filename,"filename",filename)
                 print("file_path", file_path)
                 
                 while os.path.exists(file_path):
@@ -816,7 +1229,7 @@ def get_physical_folder_path(folder_path, my_drive_path):
     print(f"Converted '{folder_path}' to physical path: '{physical_path}'")
     return physical_path
 
-
+'''
 
 @frappe.whitelist()
 def get_only_folders(is_folder, owner):

@@ -629,47 +629,6 @@ class MyDrive {
 		});
 	}
 
-	uploadFolder() {
-		let self = this;
-		this.page.add_action_item(__('<i class="fa fa-folder"></i> Upload Folder'), function () {
-			var folder_input = document.createElement("input");
-			folder_input.type = "file";
-			folder_input.accept = ".pdf, .xls, .xlsx, .doc, .docx, .png, .jpg, .jpeg, .gif";
-			folder_input.webkitdirectory = true;  // This enables folder selection
-			folder_input.multiple = true;
-			
-			folder_input.onchange = function () {
-				const files = Array.from(folder_input.files);
-				
-				if (files.length === 0) {
-					frappe.msgprint(__("No files selected"));
-					return;
-				}
-				// Filter valid files
-				const allowedExtensions = ['pdf', 'xls', 'xlsx', 'doc', 'docx', 'png', 'jpg', 'jpeg', 'gif'];
-				const validFiles = files.filter(file => {
-					const extension = file.name.split('.').pop().toLowerCase();
-					return allowedExtensions.includes(extension);
-				});
-				
-				if (validFiles.length === 0) {
-					frappe.msgprint(__("No valid files found. Only these types are allowed: pdf, xls, xlsx, doc, docx, png, jpg, jpeg, gif"));
-					return;
-				}
-				
-				console.log(`Uploading ${validFiles.length} files from folder ${self.current_folder}`);
-				
-				// Prepare folder structure data
-				const folderData = self.prepareFolderData(validFiles);
-				
-				// Send to server
-				self.sendFolderToServer(folderData);
-			};
-
-			folder_input.click();
-		});
-	}
-
 	newFolder(){
 		let self = this
 		this.page.add_action_item(__(' <i class="fa fa-plus"></i> New Folder'), function () {
@@ -782,64 +741,269 @@ class MyDrive {
 		// console.log(`open Folder ${folder} newUrl`, newUrl);
 		history.pushState({ folder:folder}, "", newUrl);
 	}
-	prepareFolderData(files) {
+
+	// uploadFolder() {
+	// 	let self = this;
+	// 	this.page.add_action_item(__('<i class="fa fa-folder"></i> Upload Folder'), function () {
+	// 		var folder_input = document.createElement("input");
+	// 		folder_input.type = "file";
+	// 		folder_input.accept = ".pdf, .xls, .xlsx, .doc, .docx, .png, .jpg, .jpeg, .gif";
+	// 		folder_input.webkitdirectory = true;  // This enables folder selection
+	// 		folder_input.multiple = true;
+			
+	// 		folder_input.onchange = function () {
+	// 			const files = Array.from(folder_input.files);
+
+	// 			console.log("Selected files:", files);
+				
+	// 			if (files.length === 0) {
+	// 				frappe.msgprint(__("No files selected"));
+	// 				return;
+	// 			}
+	// 			// Filter valid files
+	// 			const allowedExtensions = ['pdf', 'xls', 'xlsx', 'doc', 'docx', 'png', 'jpg', 'jpeg', 'gif'];
+	// 			const validFiles = files.filter(file => {
+	// 				const extension = file.name.split('.').pop().toLowerCase();
+	// 				return allowedExtensions.includes(extension);
+	// 			});
+				
+	// 			if (validFiles.length === 0) {
+	// 				frappe.msgprint(__("No valid files found. Only these types are allowed: pdf, xls, xlsx, doc, docx, png, jpg, jpeg, gif"));
+	// 				return;
+	// 			}
+				
+	// 			console.log(`Uploading ${validFiles.length} files from folder ${self.current_folder}`);
+				
+	// 			// Prepare folder structure data
+	// 			const folderData = self.prepareFolderData(validFiles);
+				
+	// 			// Send to server
+	// 			self.sendFolderToServer(folderData);
+	// 		};
+
+	// 		folder_input.click();
+	// 	});
+	// }
+
+	
+	// prepareFolderData(files) {
+	// 	let self = this;
+	// 	const folderStructure = [];
+		
+	// 	files.forEach(file => {
+	// 		const relativePath = file.webkitRelativePath;
+	// 		const pathParts = relativePath.split('/');
+	// 		const fileName = pathParts[pathParts.length - 1];
+	// 		const folderPath = pathParts.slice(0, -1).join('/');
+			
+	// 		folderStructure.push({
+	// 			file: file,
+	// 			fileName: fileName,
+	// 			folderPath: folderPath,
+	// 			relativePath: relativePath
+	// 		});
+	// 	});
+
+	// 	console.log("prepareFolderData folderData :",folderStructure);
+	// 	return folderStructure;
+	// }
+
+	// sendFolderToServer(folderData) {
+	// 	let self = this;
+	// 	let baseFolderName = self.current_folder;
+		
+	// 	// Create FormData for multiple files
+	// 	let form_data = new FormData();
+	// 	form_data.append("base_folder", baseFolderName);
+	// 	form_data.append("total_files", folderData.length);
+		
+	// 	// Add each file with its path info
+	// 	folderData.forEach((fileInfo, index) => {
+	// 		form_data.append(`file_${index}`,fileInfo.file, fileInfo.fileName);
+	// 		form_data.append(`folder_path_${index}`, fileInfo.folderPath);
+	// 		form_data.append(`relative_path_${index}`, fileInfo.relativePath);
+	// 	});
+	// 	var xhr = new XMLHttpRequest();
+	// 	xhr.open("POST", "/api/method/photos.my_drive.page.my_drive.my_drive.upload_folder_to_my_drive", true);
+	// 	xhr.setRequestHeader("Accept", "application/json");
+	// 	xhr.setRequestHeader("X-Frappe-CSRF-Token", frappe.csrf_token);
+		
+	// 	xhr.onload = function () {
+	// 		if (xhr.status === 200) {
+	// 			// console.log("Folder uploaded successfully:", xhr.responseText);
+	// 			let response = JSON.parse(xhr.responseText);
+	// 			// console.log(`response ${JSON.stringify(response)}`);
+	// 			if(response.message.success){
+	// 				let files = response.message.uploaded_files
+	// 				let folder = response.message.folder
+	// 				self.handleFilePermissions(files)
+	// 				$(".empty-state-1").remove();
+	// 				self.makeURL(folder)
+	// 				self.BackButton()
+	// 				self.FileUI(files)
+					
+	// 			}else{
+	// 				frappe.msgprint(__("Folder uploaded successfully! {0} files uploaded.", [response.message.total_uploaded]));
+	// 			}
+	// 		} else {
+	// 			console.error("Folder upload failed:", xhr.statusText);
+	// 			frappe.msgprint(__("Error uploading folder: {0}", [xhr.statusText]));
+	// 		}
+	// 	};
+		
+	// 	xhr.onerror = function() {
+	// 		console.error("Folder upload failed:", xhr.statusText);
+	// 		frappe.msgprint(__("Error uploading folder"));
+	// 	};
+		
+	// 	// Show progress
+	// 	xhr.upload.onprogress = function(event) {
+	// 		if (event.lengthComputable) {
+	// 			const percentComplete = (event.loaded / event.total) * 100;
+	// 			console.log(`Folder upload progress: ${percentComplete.toFixed(2)}%`);
+	// 		}
+	// 	};
+		
+	// 	xhr.send(form_data);
+	// }
+	uploadFolder() {
+		let self = this;
+		this.page.add_action_item(__('<i class="fa fa-folder"></i> Upload Folder'), function () {
+			var folder_input = document.createElement("input");
+			folder_input.type = "file";
+			folder_input.accept = ".pdf, .xls, .xlsx, .doc, .docx, .png, .jpg, .jpeg, .gif";
+			folder_input.webkitdirectory = true;  // This enables folder selection
+			folder_input.multiple = true;
+			
+			folder_input.onchange = function () {
+				const files = Array.from(folder_input.files);
+
+				console.log("Selected files:", files);
+				
+				if (files.length === 0) {
+					frappe.msgprint(__("No files selected"));
+					return;
+				}
+				
+				// Filter valid files
+				const allowedExtensions = ['pdf', 'xls', 'xlsx', 'doc', 'docx', 'png', 'jpg', 'jpeg', 'gif'];
+				const validFiles = files.filter(file => {
+					const extension = file.name.split('.').pop().toLowerCase();
+					return allowedExtensions.includes(extension);
+				});
+				
+				if (validFiles.length === 0) {
+					frappe.msgprint(__("No valid files found. Only these types are allowed: pdf, xls, xlsx, doc, docx, png, jpg, jpeg, gif"));
+					return;
+				}
+				
+				console.log(`Uploading ${validFiles.length} files from nested folders to ${self.current_folder}`);
+				
+				// Prepare nested folder structure data
+				const folderData = self.prepareNestedFolderData(validFiles);
+				console.log("Nested folder structure:", folderData);
+				
+				// Send to server
+				self.sendNestedFolderToServer(folderData);
+			};
+
+			folder_input.click();
+		});
+	}
+	prepareNestedFolderData(files) {
 		let self = this;
 		const folderStructure = [];
+		const allFolderPaths = new Set(); // Track all unique folder paths
 		
 		files.forEach(file => {
-			const relativePath = file.webkitRelativePath;
+			const relativePath = file.webkitRelativePath; // e.g., "folder1/folder2/file.txt"
 			const pathParts = relativePath.split('/');
 			const fileName = pathParts[pathParts.length - 1];
-			const folderPath = pathParts.slice(0, -1).join('/');
+			const folderPath = pathParts.slice(0, -1).join('/'); // "folder1/folder2"
+			
+			// Add all parent folder paths to our set
+			if (folderPath) {
+				// For "folder1/folder2", we need to create both "folder1" and "folder1/folder2"
+				const folders = pathParts.slice(0, -1); // ["folder1", "folder2"]
+				let currentPath = "";
+				
+				folders.forEach(folder => {
+					currentPath = currentPath ? `${currentPath}/${folder}` : folder;
+					allFolderPaths.add(currentPath);
+				});
+			}
 			
 			folderStructure.push({
 				file: file,
 				fileName: fileName,
-				folderPath: folderPath,
-				relativePath: relativePath
+				folderPath: folderPath, // Complete path: "folder1/folder2"
+				relativePath: relativePath, // Complete path with file: "folder1/folder2/file.txt"
+				fullPath: relativePath // Keep original for debugging
 			});
 		});
 
-		console.log("prepareFolderData folderData :",folderStructure);
-		return folderStructure;
+		console.log("All unique folder paths needed:", Array.from(allFolderPaths));
+		console.log("Files with their paths:", folderStructure);
+		
+		return {
+			files: folderStructure,
+			folderPaths: Array.from(allFolderPaths) // All unique folder paths that need to be created
+		};
 	}
 
-	sendFolderToServer(folderData) {
+	sendNestedFolderToServer(folderData) {
 		let self = this;
 		let baseFolderName = self.current_folder;
 		
-		// Create FormData for multiple files
+		// Create FormData for multiple files and folder structure
 		let form_data = new FormData();
 		form_data.append("base_folder", baseFolderName);
-		form_data.append("total_files", folderData.length);
+		form_data.append("total_files", folderData.files.length);
+		form_data.append("total_folders", folderData.folderPaths.length);
+		
+		// Add folder paths that need to be created
+		folderData.folderPaths.forEach((folderPath, index) => {
+			form_data.append(`folder_to_create_${index}`, folderPath);
+		});
 		
 		// Add each file with its path info
-		folderData.forEach((fileInfo, index) => {
+		folderData.files.forEach((fileInfo, index) => {
 			form_data.append(`file_${index}`, fileInfo.file, fileInfo.fileName);
 			form_data.append(`folder_path_${index}`, fileInfo.folderPath);
 			form_data.append(`relative_path_${index}`, fileInfo.relativePath);
+			form_data.append(`full_path_${index}`, fileInfo.fullPath);
 		});
+		
 		var xhr = new XMLHttpRequest();
-		xhr.open("POST", "/api/method/photos.my_drive.page.my_drive.my_drive.upload_folder_to_my_drive", true);
+		xhr.open("POST", "/api/method/photos.my_drive.page.my_drive.my_drive.upload_nested_folder_to_my_drive", true);
 		xhr.setRequestHeader("Accept", "application/json");
 		xhr.setRequestHeader("X-Frappe-CSRF-Token", frappe.csrf_token);
 		
 		xhr.onload = function () {
 			if (xhr.status === 200) {
-				// console.log("Folder uploaded successfully:", xhr.responseText);
 				let response = JSON.parse(xhr.responseText);
-				// console.log(`response ${JSON.stringify(response)}`);
-				if(response.message.success){
-					let files = response.message.uploaded_files
-					let folder = response.message.folder
-					self.handleFilePermissions(files)
-					$(".empty-state-1").remove();
-					self.makeURL(folder)
-					self.BackButton()
-					self.FileUI(files)
+				console.log("Server response:", response);
+				
+				if(response.message && response.message.success) {
+					let files = response.message.uploaded_files;
+					let folder = response.message.folder;
+					let createdFolders = response.message.created_folders;
 					
-				}else{
-					frappe.msgprint(__("Folder uploaded successfully! {0} files uploaded.", [response.message.total_uploaded]));
+					// console.log(`Successfully created ${createdFolders} folders and uploaded ${files.length} files`);
+					
+					self.handleFilePermissions(files);
+					$(".empty-state-1").remove();
+					self.makeURL(folder);
+					self.BackButton();
+					self.FileUI(files); // Use your existing FileUI with animation
+					
+					frappe.show_alert({
+						message: __('Nested folder structure uploaded! {0} folders created, {1} files uploaded.', [createdFolders, files.length]),
+						indicator: 'green'
+					}, 5);
+					
+				} else {
+					frappe.msgprint(__("Upload failed: {0}", [response.message?.message || "Unknown error"]));
 				}
 			} else {
 				console.error("Folder upload failed:", xhr.statusText);
@@ -852,11 +1016,14 @@ class MyDrive {
 			frappe.msgprint(__("Error uploading folder"));
 		};
 		
-		// Show progress
+		// Show progress with more detail
 		xhr.upload.onprogress = function(event) {
 			if (event.lengthComputable) {
 				const percentComplete = (event.loaded / event.total) * 100;
-				console.log(`Folder upload progress: ${percentComplete.toFixed(2)}%`);
+				console.log(`Nested folder upload progress: ${percentComplete.toFixed(2)}%`);
+				
+				// Optional: Show progress bar
+				// frappe.show_progress('Uploading...', percentComplete, 100);
 			}
 		};
 		
