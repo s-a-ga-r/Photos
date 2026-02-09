@@ -18,9 +18,8 @@
   {
    "fetch_from": "drive_id.file_name",
    "fieldname": "file_name",
-   "fieldtype": "Data",
-   "label": "File Name",
-   "unique": 1
+   "fieldtype": "Read Only",
+   "label": "File Name"
   },
   {
    "fetch_from": "drive_id.size",
@@ -43,6 +42,7 @@
   {
    "fieldname": "drive_id",
    "fieldtype": "Link",
+   "in_standard_filter": 1,
    "label": "Drive ID",
    "options": "Drive Manager"
   },
@@ -61,7 +61,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-06-26 12:47:59.980541",
+ "modified": "2025-12-02 17:34:11.111987",
  "modified_by": "Administrator",
  "module": "My Drive",
  "name": "Shared Files",

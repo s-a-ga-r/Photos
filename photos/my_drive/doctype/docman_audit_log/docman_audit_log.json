@@ -1,0 +1,109 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-01-12 17:36:43.186924",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "drive_manager",
+  "drive_access",
+  "operation",
+  "filename",
+  "file_type",
+  "is_folder",
+  "view_count",
+  "operation_on",
+  "last_viewed_on"
+ ],
+ "fields": [
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "label": "Title"
+  },
+  {
+   "depends_on": "doc.operation == \"View\";",
+   "fieldname": "drive_manager",
+   "fieldtype": "Data",
+   "label": "Drive Manager"
+  },
+  {
+   "fieldname": "drive_access",
+   "fieldtype": "Data",
+   "label": "Drive Access"
+  },
+  {
+   "fieldname": "operation",
+   "fieldtype": "Select",
+   "label": "Operation",
+   "options": "\nView\nDownload\nUpload\nDelete\nPrint\nFull Delete\nRestore\nShared"
+  },
+  {
+   "depends_on": "doc.operation == \"View\";",
+   "fieldname": "file_type",
+   "fieldtype": "Data",
+   "label": "File Type"
+  },
+  {
+   "depends_on": "eval: doc.operation == 'View';",
+   "fieldname": "view_count",
+   "fieldtype": "Int",
+   "label": "View Count"
+  },
+  {
+   "depends_on": "eval: doc.operation == 'View';\n\n",
+   "fieldname": "last_viewed_on",
+   "fieldtype": "Datetime",
+   "label": "Last Viewed On"
+  },
+  {
+   "depends_on": "eval: doc.operation != \"View\";",
+   "fieldname": "operation_on",
+   "fieldtype": "Datetime",
+   "label": "Operation On"
+  },
+  {
+   "depends_on": "doc.operation != \"View\";",
+   "fieldname": "filename",
+   "fieldtype": "Data",
+   "label": "Filename"
+  },
+  {
+   "default": "0",
+   "depends_on": "doc.is_folder == 1",
+   "fieldname": "is_folder",
+   "fieldtype": "Check",
+   "label": "is Folder"
+  }
+ ],
+ "grid_page_length": 50,
+ "hide_toolbar": 1,
+ "in_create": 1,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-01-20 14:23:31.591297",
+ "modified_by": "sagarpatil.powerit@gmail.com",
+ "module": "My Drive",
+ "name": "DocMan Audit Log",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "title"
+}

@@ -10,10 +10,13 @@
   "read",
   "write",
   "delete_file",
-  "uplaod",
+  "upload",
   "download",
   "share",
-  "manage"
+  "manage",
+  "column_break_mqcs",
+  "seen_time",
+  "seen"
  ],
  "fields": [
   {
@@ -46,13 +49,6 @@
   },
   {
    "default": "0",
-   "fieldname": "uplaod",
-   "fieldtype": "Check",
-   "in_list_view": 1,
-   "label": "Uplaod"
-  },
-  {
-   "default": "0",
    "fieldname": "download",
    "fieldtype": "Check",
    "in_list_view": 1,
@@ -71,12 +67,33 @@
    "fieldtype": "Check",
    "in_list_view": 1,
    "label": "Manage"
+  },
+  {
+   "fieldname": "column_break_mqcs",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "seen",
+   "fieldtype": "Check",
+   "label": "Seen"
+  },
+  {
+   "fieldname": "seen_time",
+   "fieldtype": "Time",
+   "label": "Seen Time"
+  },
+  {
+   "default": "0",
+   "fieldname": "upload",
+   "fieldtype": "Check",
+   "label": "Upload"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-04-14 10:41:35.230757",
+ "modified": "2026-01-08 09:56:53.692687",
  "modified_by": "Administrator",
  "module": "My Drive",
  "name": "File Access Control",
