@@ -14,6 +14,14 @@ app_license = "MIT"
 # app_include_css = "/assets/photos/css/photos.css"
 # app_include_js = "/assets/photos/js/photos.js"
 
+# app_include_js = "photos/public/js/desk_redirect.js"
+
+# app_include_js = ["/assets/photos/js/desk_redirect.js"]
+
+app_include_js = "photos.bundle.js"
+
+
+
 # include js, css files in header of web template
 # web_include_css = "/assets/photos/css/photos.css"
 # web_include_js = "/assets/photos/js/photos.js"
@@ -59,7 +67,15 @@ app_license = "MIT"
 # before_install = "photos.install.before_install"
 # after_install = "photos.install.after_install"
 
+# override file doctypes save system
+
 write_file = "photos.file.write_file"
+
+
+after_request = [
+    "photos.overrides.file_override.apply_patch"
+]
+
 
 
 # Desk Notifications
@@ -85,7 +101,12 @@ write_file = "photos.file.write_file"
 # Hook on document methods and events
 
 doc_events = {
-    "File": {"after_insert": "photos.utils.process_file"},
+    "File": {
+            "after_insert": [
+                "photos.utils.process_file",
+                "photos.utils.create_folder"
+            ]
+        }
     # "File": {"on_update": "photos.utils.handle_file_update"}
 }
 
@@ -128,8 +149,6 @@ doc_events = {
 override_doctype_dashboards = {"File": "photos.utils.get_file_dashboard"}
 
 
-
-
 # exempt linked doctypes from being automatically cancelled
 #
 # auto_cancel_exempted_doctypes = ["Auto Repeat"]
@@ -142,5 +161,9 @@ override_doctype_dashboards = {"File": "photos.utils.get_file_dashboard"}
 # }
 
 # website_route_rules = [
-#     {"from_route": "/gallery/<path:app_path>", "to_route": "gallery"},
+#     {"from_route": "/document-management", "to_route": "my-drive-v2"},
 # ]
+
+website_redirects = [
+    {"source": "/document-management", "target": "/my-drive-v2"},
+]

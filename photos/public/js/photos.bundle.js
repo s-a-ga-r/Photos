@@ -65,23 +65,8 @@ frappe.router.on('change', () => {
             return;
         
         }
-    }
-
+    }    
     
-    
-    
-    // 🔥 If coming from my-drive-v2 and going to home/desk
-    if (previousRoute === "my-drive-v2" && (currentRoute === "" || currentRoute === "Workspace")) {
-        console.log("Reloading after leaving my-drive-v2");
-        
-        // Reset previous route BEFORE reload to prevent loop
-        previousRoute = null;
-        
-        // Reload once
-        window.location.reload();
-        return;
-    }
-    console.log("currentRoute :",currentRoute);
     // Update previous route
     previousRoute = currentRoute;
 });

@@ -1,0 +1,293 @@
+
+<div class="col-lg-2 layout-side-section" style="">
+    <div class="list-sidebar overlay-sidebar hidden-xs hidden-sm">
+        <ul class="list-unstyled sidebar-menu user-actions hide">  
+            <li class="divider"></li> 
+        </ul> 
+        <ul class="list-unstyled sidebar-menu">  
+            <div class="sidebar-section views-section hide">   
+                <li class="sidebar-label"></li>
+                <div class="current-view">    
+                    <li class="list-link">
+                        <a class="btn btn-default btn-sm list-sidebar-button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" href="#">
+                            <span class="selected-view ellipsis"></span>      
+                            <span>
+                                <svg class="icon icon-xs">        
+                                    <use href="#icon-select"></use>
+                                </svg>      
+                            </span>
+                        </a>
+                        <ul class="dropdown-menu views-dropdown" role="menu"> </ul>    
+                    </li>
+                    <li class="sidebar-action">
+                        <a class="view-action"></a>    
+                    </li>  
+                </div>	
+            </div>
+        
+            <div class="sidebar-section filter-section">
+                <div class="user-box">
+                    <div class="user-info">
+                        <ul class="list-unstyled sidebar-menu sidebar-image-section">
+                            <li class="sidebar-image-wrapper">
+                                <div class="sidebar-standard-image">    
+                                    <div class="standard-image-1">{{user_details.standard_img}}</div>  
+                                </div>      
+                            </li> 
+                            <li class="name employee-name" id="user-info-1">{{user_details.employee_name}}</li>
+                            <li class="designation" id="user-info-1">
+                                <label class="label label-info">{{user_details.designation}}</label>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <ul class="folder-list" id="folder-list"  style="padding: 0"><li></li></ul>
+
+                    <h5 class="go-home"><i class="fa fa-home me-2 icon-large"></i>Home</h5>
+
+                    <ul class="folder-list" id="folder-list"  style="padding: 0"><li></li></ul>
+
+                        <h5 class="shared-file open-media" data-media-files="Media"><i class="fa fa-film fa-sm"></i> Media</h5>
+
+                    <ul class="folder-list" id="folder-list"  style="padding: 0"><li></li></ul>
+
+                        <h5 class="go-folders"> <i class="fa fa-archive"></i>Folders</h5>
+
+                    <ul class="folder-list" id="folder-list"  style="padding: 0"><li></li></ul>
+                        
+                        <h5 class="shared-file open-shared" data-shared-files="Shared"><i class="fa fa-share-alt icon-large2"></i>Shared </h5>
+
+                    <ul class="folder-list" id="folder-list"  style="padding: 0"><li></li></ul>
+                    
+                        <h5 class="open-documents" data-documents-files="Documents"><i class="fa fa-file icon-large2"></i>Documents</h5>
+
+                    <ul class="folder-list" id="folder-list"  style="padding: 0"><li></li></ul>
+                    
+                        <h5 class="open-notifications"><i class="fa fa-envelope"></i>Notifications</h5>
+
+                    <ul class="folder-list" id="folder-list"  style="padding: 0"><li></li></ul>
+                </div>
+            </div>  
+        </ul> 
+    </div>
+</div>
+
+
+<div class="col layout-main-section-wrapper file-view">
+    <div class="layout-main-section frappe-card">
+
+        <div class="page-form flex">
+            <div class="standard-filter-section flex">
+                <div class="level-left list-header-subject">
+					<div class="list-row-col list-subject level">
+                        &nbsp;&nbsp<span class="level-item"></span>
+                    </div>
+				</div>
+            </div>
+
+            <div class="filter-section flex">
+                <div class="filter-selector">
+                    <div class="dropdown-search">
+                        <input type="text" placeholder="Search" data-element="search" class="form-control input-xs">      
+                        
+                    </div>    
+                </div>
+            </div>            
+        </div>
+
+        <div class="frappe-list">
+            <div class="result file-grid-view">
+                
+                <div class="file-grid">
+                    {% for folder in folders %}
+                        {% if folder.is_folder %}
+                            <div class="file">
+                                <div class="file-header">
+                                    <input class="level-item checkbox hidden-xs" type="checkbox" data-file-id="{{folder.file_id}}" data-docname={{folder.drive_id}}>
+                                </div>
+                                {% if folder.shared %}
+                                    <div class="shared-badge">
+                                        <i class="fa fa-share-alt"></i>
+                                        <!-- <img alt="File Icon" class="icon" src="/assets/photos/shared.png"> -->
+                                    </div>
+                                {% endif %}
+                                <a href="#" class="open-folder" data-folder-name="{{ folder.file_id }}"  data-drive-id={{folder.drive_id}} data-is-shared={{folder.shared}}>
+                                    <span class="corner"></span>
+                                        <div class="file-body">
+                                            <svg class="icon" style="width: 71px; height: 75px" aria-hidden="true">
+                                                <use href="#icon-folder-normal-large"></use>
+                                            </svg>
+                                        </div>
+                                    <div class="file-name">
+                                        {{ folder.filename }}
+                                        <br>
+                                        <small>{{folder.creation}}</small>
+                                    </div>
+                                </a>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+
+
+                    {% for file in files %}
+                        {% if file.file_type == "PDF"%}
+                                <div class="file">
+                                    <div class="file-header">
+                                            <input class="level-item checkbox hidden-xs" type="checkbox" data-file-id={{file.file_id}} data-docname={{file.drive_id}}>
+                                    </div>
+                                    {% if file.shared %}
+                                        <div class="shared-badge">
+                                            <i class="fa fa-share-alt"></i>
+                                            <!-- <img alt="File Icon" class="icon" src="/assets/photos/shared.png"> -->
+                                        </div>
+                                    {% endif %}
+                                    <a href="#" class="open-pdf" data-file-url="{{ file.file_url }}" data-name={{file.file_id}}>
+                                        <span class="corner"></span>
+
+                                        <div class="file-body">
+                                            <img alt="File Icon" style="width: 77px; height: 90px" class="icon" src="/assets/photos/file.png">
+                                        </div>
+                                        <div class="file-name">
+                                            {{file.filename}}
+                                            <br>
+                                            <small>{{file.creation}}</small>
+                                        </div>
+                                    </a>
+                                </div>
+                        {% else %}
+                            {% if file.file_type == "XLSX" || file.file_type == "CSV" %}
+                                    <div class="file">
+                                        <div class="file-header">
+                                            <input class="level-item checkbox hidden-xs" type="checkbox" data-file-id={{file.file_id}} data-docname={{file.drive_id}}>
+                                        </div>
+                                         {% if file.shared %}
+                                                <div class="shared-badge">
+                                                    <i class="fa fa-share-alt"></i>
+                                                    <!-- <img alt="File Icon" class="icon" src="/assets/photos/shared.png"> -->
+                                                </div>
+                                            {% endif %}
+                                        <a href="#" class="open-spreadsheet" data-file-url="{{ file.file_url }}" data-name={{file.file_id}}>
+                                            <span class="corner"></span>
+                                            <div class="file-body">
+                                                <img alt="File Icon" style="width: 75px; height: 90px" class="icon" src="/assets/photos/xls.png">
+                                            </div>
+
+                                            <div class="file-name">
+                                                {{file.filename}}
+                                                <br>
+                                                <small>{{file.creation}}</small>
+                                            </div>
+                                        </a>
+                                    </div>
+                            {% else %}
+                                {% if file.file_type == "JPG" || file.file_type == "JPEG" || file.file_type == "PNG" %}
+                                        <div class="file">
+                                            <div class="file-header">
+                                                    <input class="level-item checkbox hidden-xs" type="checkbox" data-file-id={{file.file_id}} data-docname={{file.drive_id}}>
+                                            </div>
+                                            {% if file.shared %}
+                                                <div class="shared-badge">
+                                                    <i class="fa fa-share-alt"></i>
+                                                    <!-- <img alt="File Icon" class="icon" src="/assets/photos/shared.png"> -->
+                                                </div>
+                                            {% endif %}
+
+                                            <a href="#" class="image-preview" data-file-url="{{ file.file_url }}" data-file-id={{file.file_id}} data-drive-id={{file.drive_id}} data-tags="{{file.persons}}">
+                                                <span class="corner"></span>
+                                                    
+                                                <div class="image">
+                                                    <img alt="image" class="img-responsive" src="{{file.file_url}}">
+                                                </div>
+                                                <div class="file-name">
+                                                    {{file.filename}}
+                                                    <br>
+                                                    <small>{{file.creation}}</small>
+                                                </div>
+                                            </a>
+                                        </div>
+
+                                {% else %}
+                                    {% if file.file_type == "MPV" %}
+                                        <div class="file">
+                                            <div class="file-header">
+                                                <input class="level-item checkbox hidden-xs" type="checkbox" data-file-id="{{ file.file_id }}" data-docname="{{ file.drive_id }}">
+                                            </div>
+
+                                            <a href="#" class="video-preview" data-file-url="{{ file.file_url }}" data-file-id="{{ file.file_id }}" data-drive-id="{{ file.drive_id }}">
+
+                                                <!-- <div class="video-thumb">
+                                                    <video width="100%" height="140" muted>
+                                                        <source src="{{ file.file_url }}" type="video/mp4">
+                                                    </video>
+                                                </div> -->
+
+                                                <div class="file-body">
+                                                    <img alt="File Icon" style="width: 75px; height: 90px" class="icon" src="/assets/photos/video.png">
+                                                </div>
+
+                                                <div class="file-name">
+                                                    {{ file.filename }}
+                                                    <br>
+                                                    <small>{{ file.creation }}</small>
+                                                </div>
+                                            </a>
+
+                                        </div>
+
+                                    {% endif %}
+
+                                {% endif %}
+                            {% endif %}
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="no-result" style="display: none;">
+                <div class="breadcrumbs"></div>
+                <div class="text-muted flex justify-center align-center">
+                    <div class="msg-box no-border">
+                        <div>
+                            <img src="/assets/frappe/images/ui-states/list-empty-state.svg" alt="Generic Empty State" class="null-state" />
+                        </div>
+                        <p>No File found with matching filters. Clear filters to see all File.</p>
+                        <p>
+                            <button class="btn btn-default btn-sm btn-new-doc hidden-xs">
+                                Create a new File
+                            </button>
+                            <button class="btn btn-primary btn-new-doc visible-xs">
+                                Create New
+                            </button>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="list-paging-area level" style="">
+                <div class="level-left">
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-default btn-sm btn-paging btn-info" data-length-value="20">
+                            20
+                        </button>
+
+                        <button type="button" class="btn btn-default btn-sm btn-paging" data-length-value="100">
+                            100
+                        </button>
+
+                        <button type="button" class="btn btn-default btn-sm btn-paging" data-length-value="500">
+                            500
+                        </button>
+
+                        <button type="button" class="btn btn-default btn-sm btn-paging" data-length-value="2500">
+                            2500
+                        </button>
+                    </div>
+                </div>
+                <div class="level-right">
+                    <button class="btn btn-default btn-more btn-sm" style="display: none;">
+                        Load More
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="layout-footer hide"></div>
+</div>

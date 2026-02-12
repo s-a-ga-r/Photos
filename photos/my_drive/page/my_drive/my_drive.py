@@ -533,9 +533,13 @@ import traceback
 def upload_nested_folder_to_my_drive():
     try:
         # Get form data
+        
         base_folder = frappe.form_dict.get('base_folder', '')  # Home
+        top_folder = frappe.form_dict.get("top_folder",'')
         total_files = int(frappe.form_dict.get('total_files', 0))
         total_folders = int(frappe.form_dict.get('total_folders', 0))
+
+        base_top_folder = f"{base_folder}/{top_folder}" if base_folder and top_folder else base_folder
         
         print(f'Total files: {total_files}, Total folders: {total_folders}, Base folder: {base_folder}')
         
@@ -567,20 +571,21 @@ def upload_nested_folder_to_my_drive():
         
         # Sort folders by depth to create parent folders first
         folders_to_create.sort(key=lambda x: x.count('/'))
+
         print("Folders to create (sorted by depth):", folders_to_create)
-        uploaded_folders = []      
+        uploaded_folders = []
         for folder in folders_to_create:
             if folder:
                 target_folder = f"{base_folder}/{folder}" if base_folder else folder
                 # print(f"Creating folder structure: {target_folder}")
-                if create_nested_folder_structure(target_folder, my_drive_path):
-                    created_folders_count += 1
-                # uploaded_folders_d = create_nested_folder_structure(target_folder, my_drive_path)
-                # if uploaded_folders:
-                #     print("Uploaded Folder:",uploaded_folders)
-                #     uploaded_folders.append(uploaded_folders_d)
+                # if create_nested_folder_structure(target_folder, my_drive_path):
                 #     created_folders_count += 1
-        print(f"Successfully created {created_folders_count} folder structures")
+                uploaded_folders_d = create_nested_folder_structure1(target_folder, my_drive_path)
+                if uploaded_folders_d:
+                    print("Uploaded Folder:",uploaded_folders_d)
+                    uploaded_folders.append(uploaded_folders_d)
+                    created_folders_count += 1
+        print(f"Successfully created {created_folders_count} folder structures : {uploaded_folders}")
         
         # Step 2: Process and upload all files
         for i in range(total_files):
@@ -683,9 +688,9 @@ def upload_nested_folder_to_my_drive():
         if uploaded_files:
             return {
                 "success": True,
-                "folder": base_folder,
+                "folder": base_top_folder,
                 "uploaded_files": uploaded_files,
-                # "uploaded_folders": uploaded_folders,
+                "uploaded_folders": uploaded_folders,
                 "total_uploaded": len(uploaded_files),
                 "created_folders": created_folders_count
             }
@@ -710,151 +715,45 @@ def upload_nested_folder_to_my_drive():
 
 
 def create_nested_folder_structure1(folder_str,my_drive_path):
-    print(f"Creating Nested folder structure for folder_str: {folder_str}"," :", my_drive_path)
-
-    folder_path = folder_str.strip('/')  # 'Home/imges','Home/imges/aaa'
-    folder_list = folder_path.split('/') # ['Home', 'imges'],['Home', 'imges', 'aaa']
-    parent = folder_list[-2]
-    folder_name = folder_list[-1]
-    # folder_path = folder_list[:-1]
-    folder_path = "/".join(folder_list[:-1])
-    current_logical_path = ""
-    current_physical_path = my_drive_path
-
-    print("parent",parent)
-    print("folder_name",folder_name)
-    print("created physical directory",current_physical_path)
-
-    folders_created = False
-    if folder_name:
-        # current_logical_path = f"{current_logical_path}/{folder_name}" 
-        if parent == "Home":
-            current_physical_path=current_physical_path
-        else:
-            current_physical_path = os.path.join(current_physical_path, parent)
-        print(f"Physical path: {current_physical_path}")
-        if not os.path.exists(current_physical_path):
-            os.makedirs(current_physical_path)
-            print(f"Created physical directory: {current_physical_path}")
-
-        
-        
-        existing_file_folder = frappe.db.get_value("File", {
-            "file_name": folder_name,
-            "is_folder": 1,
-            "folder": parent
-        })
-
-        if not existing_file_folder:
-            print(f"Creating File folder: {folder_name} under parent: {parent}")
-
-            folder_doc = frappe.get_doc({
-                "doctype": "File",
-                "file_name": folder_name,
-                "is_folder": 1,
-                "folder": parent
-            })
-            folder_doc.insert(ignore_permissions=True)
-            existing_file_folder = folder_doc.name
-            print(f"Created File folder: {folder_name}")
-            folders_created = True
-
-        existing_drive_folder = frappe.db.get_value("Drive Manager", {
-            "attached_to_name": existing_file_folder,
-            "is_folder": 1,
-        })
-
-        if not existing_drive_folder:
-            drive_folder_doc = frappe.get_doc({
-                "doctype": "Drive Manager",
-                "file_name": folder_name,
-                "attached_to_name": existing_file_folder,
-                "is_folder": 1,
-                "folder": parent,
-                "created_by": frappe.session.user
-            })
-            drive_folder_doc.insert(ignore_permissions=True)
-            print(f"Created Drive Manager folder: {folder_name}")
-
-        return folders_created
-
-    # current_logical_path = ""
-    # current_physical_path = my_drive_path
-
-
-
-
-def create_nested_folder_structure(folder, my_drive_path):
-    print(f"Creating Nested Folder Structure For Folder: {folder}"," my_drive_path:", my_drive_path)
-    # folder = Home/imges
+    print(f"Creating Nested Folder Structure : {folder_str}")
+        # folder = Home/imges
     try:
-        if not folder or folder == "/" or folder == "Home":
+        if not folder_str or folder_str == "/" or folder_str == "Home":
             return False
         # Clean up the path
-        folder_path = folder.strip('/')
-        folders = folder_path.split('/')
+        folder_path = folder_str.strip('/')
+        folders = folder_path.split('/') # ['Home', 'imges'],['Home', 'imges', 'aaa']
         current_logical_path = ""
         current_physical_path = my_drive_path
-        sorted_list = folders[:-1]
-        if len(sorted_list) == 1:
-            parent = sorted_list[0]
-            print("if:",parent)
-        else:
-            print("else:",sorted_list)
-            parent = "/".join(sorted_list)
-            print("my parent : ",parent)
-
-        # join_path = "/".join(folders[:-1])
-
-
-
-
-        print("stripped folder",folder_path)
-        print("splited folder",folders)
-        print("my parent",parent)
-        print("current_physical_path",current_physical_path)
-        
-        folders_created = False
-        for folder_name in folders:
-            uploaded_folders_dict = {}
-            if not folder_name or folder_name == "Home":
+            
+        uploaded_folders_dict = {}
+        for i in range(len(folders)):
+            folder_name = folders[i]
+            if folder_name == "Home":
                 continue
-            # Build logical path step by step
-            parent_folder = current_logical_path if current_logical_path else "Home"
+            parent_list = folders[:i]
+            if len(parent_list) == 1:
+                parent_folder = parent_list[0]
+            else:
+                parent_folder = "/".join(parent_list)
             current_logical_path = f"{current_logical_path}/{folder_name}" if current_logical_path else folder_name
             # Build physical path
             current_physical_path = os.path.join(current_physical_path, folder_name)
-            
-            print(f"Processing folder: {folder_name}")
-            print(f"Parent Folder: {parent_folder},my parent:{parent}")
-            print(f"Physical Path: {current_physical_path}")
-            print(f"Logical Path: {current_logical_path}")
             
             # Create physical directory if it doesn't exist
             if not os.path.exists(current_physical_path):
                 os.makedirs(current_physical_path)
                 print(f"Created physical directory with Physical Path: {current_physical_path}")
-            
             # Check if File folder already exists
-            existing_file_folder = frappe.db.get_value("File", {
-                "file_name": folder_name,
-                "is_folder": 1,
-                "folder": parent_folder
-            })
+            existing_file_folder = frappe.db.get_value("File", {"file_name": folder_name,"is_folder": 1,"folder": parent_folder})
 
-            # if not frappe.db.exists("File", folder_path):
-            #     existing_file_folder = None
-
-            print("file exist is :",existing_file_folder)
-            
-            # Create File folder if it doesn't exist
+            print(f"Processing folder: {folder_name}")
+            print(f"ParentFolder: {parent_folder}")
+            print(f"Physical Path: {current_physical_path}")
+            print(f"Logical Path: {current_logical_path}")
 
             if not existing_file_folder:
                 print(f"Creating File folder: {folder_name} under parent: {parent_folder}")
-
-                if folder_name == "aaa":
-                    parent_folder = f"Home/{parent_folder}"
-
                 folder_doc = frappe.get_doc({
                     "doctype": "File",
                     "file_name": folder_name,
@@ -864,9 +763,10 @@ def create_nested_folder_structure(folder, my_drive_path):
                 folder_doc.insert(ignore_permissions=True)
                 existing_file_folder = folder_doc.name
                 uploaded_folders_dict["file_id"] = folder_doc.name
-                uploaded_folders_dict["folder_name"] = folder_name
+                uploaded_folders_dict["file_name"] = folder_name
+                uploaded_folders_dict["folder"] = parent_folder
+
                 print(f"Created File folder: {folder_name}")
-                folders_created = True
             
             # Check and create Drive Manager folder
             existing_drive_folder = frappe.db.get_value("Drive Manager", {
@@ -877,6 +777,8 @@ def create_nested_folder_structure(folder, my_drive_path):
             print("Drive exist is :",existing_file_folder)
             
             if not existing_drive_folder:
+                print(f"Creating Drive folder: {folder_name} under parent: {parent_folder}")
+
                 drive_folder_doc = frappe.get_doc({
                     "doctype": "Drive Manager",
                     "file_name": folder_name,
@@ -889,15 +791,245 @@ def create_nested_folder_structure(folder, my_drive_path):
                 drive_folder_doc.insert(ignore_permissions=True)
                 uploaded_folders_dict["drive_id"] = drive_folder_doc.name
                 print(f"Created Drive Manager folder: {folder_name}")
+        return uploaded_folders_dict
+       
+    except Exception as e:
+        print(f"Error creating nested folder structure for {folder_str}: {str(e)}")
+        traceback.print_exc()
+        return False
+
+
+def create_nested_folder_structure2(folder_str, my_drive_path):
+    print(f"Creating Nested Folder Structure : {folder_str}")
+    # folder = Home/imges
+    try:
+        if not folder_str or folder_str == "/" or folder_str == "Home":
+            return False
+        # Clean up the path
+        folder_path = folder_str.strip('/')
+        folder_list = folder_path.split('/') # ['Home', 'imges'],['Home', 'imges', 'aaa']
+        current_logical_path = ""
+        current_physical_path = my_drive_path
+        sorted_list = folder_list[:-1]
+        print("splited folder ",folder_list)
+        if len(sorted_list) == 1:
+            parent = sorted_list[0]
+            print("if: its ",parent)
+        else:
+            # print("In else:",sorted_list)
+            parent = "/".join(sorted_list)
+            print("In else created My Parent : ",parent)
+
+        # join_path = "/".join(folders[:-1])
+
+        # print("stripped folder ",folder_path)
+        name = folder_path
+
+        print("My parent ",parent)
+        print(f"name is : {name}")
+        print("Current physical path ",current_physical_path)
+        
+        folders_created = False
+        uploaded_folders_dict = {}
+        for folder in folder_list:
+            # if not folder_name or folder_name == "Home":
+            if folder == "Home":
+                continue
+            # Build logical path step by step
             
-            print("uploaded folder dict",uploaded_folders_dict)
+            parent_folder = current_logical_path if current_logical_path else "Home"
+            current_logical_path = f"{current_logical_path}/{folder}" if current_logical_path else folder
+
+            # Build physical path
+            print("checking current_logical_path :",current_logical_path)
+            current_physical_path = os.path.join(current_physical_path, folder)
+           
+            print(f"Creating Physical Path: {current_physical_path}")
+            # Create physical directory if it doesn't exist
+            if not os.path.exists(current_physical_path):
+                os.makedirs(current_physical_path)
+                print(f"Created Physical Path: {current_physical_path}")                
+            # Check if File folder already exists
+
+            print(f"Processing folder: {folder}")
+            print(f"parent_folder: {parent_folder}, my_parent: {parent}")
+
+            existing_file_folder = frappe.db.get_value("File", {
+                "file_name": folder,
+                "is_folder": 1,
+                "folder": parent_folder
+            })
+            print("file exist is :",existing_file_folder)
+
+            # if frappe.db.exists("File",name):
+            #     print(f"in frappe.db.exist file is exist : {frappe.db.get_value("File",parent,"name")} folder :{folder}")
+                # print("folder",folder)
+                # existing_file_folder = None
+
+            exists = frappe.db.exists("File",{"file_name":folder,"is_folder":1,"folder":parent_folder}) # frappe.db.exists("File",{"name": name,"is_folder": 1})
+            if exists:
+                print(f"Db Exist :{exists}")
+            else:
+                print(f"Db Not Exist for name {name}")
+                folder_doc = frappe.get_doc({
+                    "doctype": "File",
+                    "file_name": folder,
+                    "is_folder": 1,
+                    "folder": parent
+                })
+                folder_doc.insert(ignore_permissions=True)
+                existing_file_folder = folder_doc.name
+                uploaded_folders_dict["file_id"] = folder_doc.name
+                uploaded_folders_dict["file_name"] = folder
+                uploaded_folders_dict["folder"] = parent
+
+                print(f"Created File folder: {folder}")
+
+                existing_drive_folder = frappe.db.get_value("Drive Manager", {
+                    "attached_to_name": existing_file_folder,
+                    "is_folder": 1,
+                })
+
+                print("Drive exist is :",existing_drive_folder)
+            
+                if not existing_drive_folder:
+                    print(f"Creating Drive folder: {folder} attached_to_file: {existing_file_folder}")
+
+                    drive_folder_doc = frappe.get_doc({
+                        "doctype": "Drive Manager",
+                        "file_name": folder,
+                        "attached_to_name": existing_file_folder,
+                        "is_folder": 1,
+                        "folder": parent,
+                        "created_by": frappe.session.user
+                    })
+                    
+                    drive_folder_doc.insert(ignore_permissions=True)
+                    uploaded_folders_dict["drive_id"] = drive_folder_doc.name
+                    print(f"Created Drive Manager folder: {folder}")
+        return uploaded_folders_dict
+    except Exception as e:
+        print(f"Error creating nested folder structure for {folder_str}: {str(e)}")
+        traceback.print_exc()
+        return False
+
+
+
+def create_nested_folder_structure(folder, my_drive_path):
+    print(f"Creating Nested Folder Structure : {folder}")
+    # folder = Home/imges
+    try:
+        if not folder or folder == "/" or folder == "Home":
+            return False
+        # Clean up the path
+        folder_path = folder.strip('/')
+        folders = folder_path.split('/') # ['Home', 'imges'],['Home', 'imges', 'aaa']
+        current_logical_path = ""
+        current_physical_path = my_drive_path
+        sorted_list = folders[:-1] 
+        if len(sorted_list) == 1:
+            parent = sorted_list[0]
+            print("In if:",parent)
+        else:
+            print("In else:",sorted_list)
+            parent = "/".join(sorted_list)
+            print("My Parent : ",parent)
+
+        # join_path = "/".join(folders[:-1])
+
+        print("stripped folder ",folder_path)
+        print("splited folder ",folders)
+        print("My parent ",parent)
+        print("current_physical_path ",current_physical_path)
+        
+        folders_created = False
+        uploaded_folders_dict = {}
+        for folder_name in folders:
+            # if not folder_name or folder_name == "Home":
+            if folder_name == "Home":
+                continue
+            # Build logical path step by step
+            name = folder_path
+            parent_folder = current_logical_path if current_logical_path else "Home"
+            current_logical_path = f"{current_logical_path}/{folder_name}" if current_logical_path else folder_name
+            # Build physical path
+            current_physical_path = os.path.join(current_physical_path, folder_name)
+            print(f"Processing folder: {folder_name}")
+            print(f"ParentFolder: {parent_folder}, MyParent: {parent}")
+            print(f"Physical Path: {current_physical_path}")
+            print(f"Logical Path: {current_logical_path}")
+            # Create physical directory if it doesn't exist
+            if not os.path.exists(current_physical_path):
+                os.makedirs(current_physical_path)
+                print(f"Created physical directory with Physical Path: {current_physical_path}")
+            # Check if File folder already exists
+            existing_file_folder = frappe.db.get_value("File", {
+                "file_name": folder_name,
+                "is_folder": 1,
+                "folder": parent_folder
+            })
+
+            print(f"parent is : {parent}, name is : {name}")
+
+            if frappe.db.exists("File", name):
+                print("file exist",frappe.db.get_value("File",parent,"name"))
+                print("No need to create folder",folder_name)
+                # existing_file_folder = None
+            print("file exist is :",existing_file_folder)
+            
+            # Create File folder if it doesn't exist
+
+            if not existing_file_folder:
+                print(f"Creating File folder: {folder_name} under parent: {parent_folder}")
+
+                # if folder_name == "aaa":
+                #     parent_folder = f"Home/{parent_folder}"
+                #     print("this is aaa parent_folder : ",parent_folder,"my parent :",parent)
+
+                folder_doc = frappe.get_doc({
+                    "doctype": "File",
+                    "file_name": folder_name,
+                    "is_folder": 1,
+                    "folder": parent
+                })
+                folder_doc.insert(ignore_permissions=True)
+                existing_file_folder = folder_doc.name
+                uploaded_folders_dict["file_id"] = folder_doc.name
+                uploaded_folders_dict["file_name"] = folder_name
+                uploaded_folders_dict["folder"] = parent
+
+                print(f"Created File folder: {folder_name}")
+                folders_created = True
+            
+            # Check and create Drive Manager folder
+            existing_drive_folder = frappe.db.get_value("Drive Manager", {
+                "attached_to_name": existing_file_folder,
+                "is_folder": 1,
+            })
+
+            print("Drive exist is :",existing_file_folder)
+            
+            if not existing_drive_folder:
+                print(f"Creating Drive folder: {folder_name} under parent: {parent_folder}")
+
+                drive_folder_doc = frappe.get_doc({
+                    "doctype": "Drive Manager",
+                    "file_name": folder_name,
+                    "attached_to_name": existing_file_folder,
+                    "is_folder": 1,
+                    "folder": parent,
+                    "created_by": frappe.session.user
+                })
+                
+                drive_folder_doc.insert(ignore_permissions=True)
+                uploaded_folders_dict["drive_id"] = drive_folder_doc.name
+                print(f"Created Drive Manager folder: {folder_name}")
+            
+            # print("uploaded folder dict",uploaded_folders_dict)
 
             # uploaded_folders.append(uploaded_folders_dict)
-            # return uploaded_folders_dict
-
-        return folders_created
-
-
+        return uploaded_folders_dict
+        # return folders_created
             # {
             #     "file_id": file_doc.name,
             #     "drive_id": drive_id,
@@ -908,7 +1040,6 @@ def create_nested_folder_structure(folder, my_drive_path):
             #     "physical_path": file_path
             # }
         # return uploaded_folders
-        
     except Exception as e:
         print(f"Error creating nested folder structure for {folder}: {str(e)}")
         traceback.print_exc()
@@ -1325,26 +1456,24 @@ def get_folder_contents(folder):
 
     return {"files": files, "parent_folder_permission":parent_permission}
 
-  
+
 @frappe.whitelist()
-def share_files(file_permissions):
-    if not file_permissions:
+def share_files(share_files):
+    if not share_files:
         frappe.msgprint(_("No files selected for sharing."))
         return
-    file_permissions = frappe.parse_json(file_permissions)
-    for file_permission in file_permissions:
-        file_id = file_permission.get("file")
-        docname = file_permission.get("docname")
-        child_data = file_permission.get("child_data")
-        shared_by = file_permission.get("shared_by")
-        filename = frappe.get_value("Drive Manager",docname,["file_name"])
+    files = frappe.parse_json(share_files)
+    for file in files:
+        file_id = file.get("file_id")
+        drive_id = file.get("drive_id")
+        child_data = file.get("child_data")
+        shared_by = file.get("shared_by")
+        filename = frappe.get_value("Drive Manager",drive_id,["file_name"])
 
-        if not file_id or not docname or not child_data:
+        if not file_id or not drive_id or not child_data:
             continue
 
-        # frappe.msgprint(str(child_data))
-
-        doc = frappe.get_doc("Drive Manager", docname)
+        doc = frappe.get_doc("Drive Manager", drive_id)
         for child in child_data:
             doc.append("user_permissions", child)
             # frappe.msgprint(str(child['for_user']))
@@ -1353,7 +1482,7 @@ def share_files(file_permissions):
 
             send_mail(
                 recipients=[child['for_user']], 
-                subject=f"File Shared to You - {docname}", 
+                subject=f"File Shared to You - {drive_id}", 
                 content=f"""
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                     <div style="text-align: center; margin-bottom: 20px;">
@@ -1376,15 +1505,14 @@ def share_files(file_permissions):
                 </div>
                 """, 
                 reference_doctype='Drive Manager', 
-                reference_name=docname
+                reference_name=drive_id
             )
-
 
         doc.flags.ignore_permissions = True
         doc.save()
 
         nwdoc = frappe.new_doc('Shared Files')
-        nwdoc.drive_id = docname
+        nwdoc.drive_id = drive_id
         nwdoc.shared_by = shared_by
         members_list = [item['for_user'] for item in child_data]
         nwdoc.members = ', '.join(members_list)
@@ -1522,23 +1650,14 @@ def format_bytes(size):
         size /= 1024.0
 
 
-
-
-
-
 from datetime import datetime, timedelta
 
 def format_last_login(login_time):
     now = datetime.now()
-
-
-
     login_date = login_time.date()
     today = now.date()
     yesterday = today - timedelta(days=1)
-
     time_str = login_time.strftime("%-I:%M %p").lower()  # Use "%#I" on Windows
-
     if login_date == today:
         return f"Today at {time_str}"
     elif login_date == yesterday:
@@ -1599,350 +1718,350 @@ def delete_bulk_items(bulk_files):
 
 
 
-# @frappe.whitelist()
-# def upload_folder_to_my_drive():
-#     try:
-#         # Get form data
-#         base_folder = frappe.form_dict.get('base_folder', '') #Home
-#         total_files = int(frappe.form_dict.get('total_files', 0)) #3
-#         print(total_files,base_folder)
+'''@frappe.whitelist()
+def upload_folder_to_my_drive():
+    try:
+        # Get form data
+        base_folder = frappe.form_dict.get('base_folder', '') #Home
+        total_files = int(frappe.form_dict.get('total_files', 0)) #3
+        print(total_files,base_folder)
         
-#         frappe.log_error(f"Upload folder debug - Base folder: {base_folder}, Total files: {total_files}")
+        frappe.log_error(f"Upload folder debug - Base folder: {base_folder}, Total files: {total_files}")
         
-#         if total_files == 0:
-#             return {"success": False, "message": f"No files to upload total files {total_files}"}
+        if total_files == 0:
+            return {"success": False, "message": f"No files to upload total files {total_files}"}
         
-#         uploaded_files = []
-#         created_folders = set()  # Track created folders to avoid duplicates
+        uploaded_files = []
+        created_folders = set()  # Track created folders to avoid duplicates
         
-#         # First, create all necessary folders
-#         for i in range(total_files):
-#             folder_path_key = f"folder_path_{i}"
-#             folder_path = frappe.form_dict.get(folder_path_key, '')
+        # First, create all necessary folders
+        for i in range(total_files):
+            folder_path_key = f"folder_path_{i}"
+            folder_path = frappe.form_dict.get(folder_path_key, '')
             
-#             if folder_path and folder_path not in created_folders:
-#                 target_folder = f"{base_folder}/{folder_path}" if base_folder else folder_path
-#                 print("creating new folder",target_folder)
-#                 create_folder_structure(target_folder)
-#                 created_folders.add(folder_path)
-#                 print("created folders",created_folders)
+            if folder_path and folder_path not in created_folders:
+                target_folder = f"{base_folder}/{folder_path}" if base_folder else folder_path
+                print("creating new folder",target_folder)
+                create_folder_structure(target_folder)
+                created_folders.add(folder_path)
+                print("created folders",created_folders)
         
-#         # Process each file
-#         for i in range(total_files):
-#             file_key = f"file_{i}"
-#             folder_path_key = f"folder_path_{i}"
-#             relative_path_key = f"relative_path_{i}"
+        # Process each file
+        for i in range(total_files):
+            file_key = f"file_{i}"
+            folder_path_key = f"folder_path_{i}"
+            relative_path_key = f"relative_path_{i}"
             
-#             # Get file and path info
-#             uploaded_file = frappe.request.files.get(file_key)
-#             folder_path = frappe.form_dict.get(folder_path_key, '')
-#             relative_path = frappe.form_dict.get(relative_path_key, '')
+            # Get file and path info
+            uploaded_file = frappe.request.files.get(file_key)
+            folder_path = frappe.form_dict.get(folder_path_key, '')
+            relative_path = frappe.form_dict.get(relative_path_key, '')
             
-#             if not uploaded_file:
-#                 frappe.log_error(f"No file found for key: {file_key}")
-#                 continue
+            if not uploaded_file:
+                frappe.log_error(f"No file found for key: {file_key}")
+                continue
             
-#             # Determine the target folder
-#             if folder_path:
-#                 target_folder = f"{base_folder}/{folder_path}" if base_folder else folder_path
-#             else:
-#                 target_folder = base_folder
+            # Determine the target folder
+            if folder_path:
+                target_folder = f"{base_folder}/{folder_path}" if base_folder else folder_path
+            else:
+                target_folder = base_folder
             
-#             frappe.log_error(f"Processing file: {uploaded_file.filename} to folder: {target_folder}")
+            frappe.log_error(f"Processing file: {uploaded_file.filename} to folder: {target_folder}")
             
-#             # Validate file type
-#             allowed_extensions = ['pdf', 'xls', 'xlsx', 'doc', 'docx', 'png', 'jpg', 'jpeg', 'gif']
-#             file_extension = uploaded_file.filename.split('.')[-1].lower()
+            # Validate file type
+            allowed_extensions = ['pdf', 'xls', 'xlsx', 'doc', 'docx', 'png', 'jpg', 'jpeg', 'gif']
+            file_extension = uploaded_file.filename.split('.')[-1].lower()
             
-#             if file_extension not in allowed_extensions:
-#                 frappe.log_error(f"Invalid file type: {uploaded_file.filename}")
-#                 continue
-#             try:
-#                 # Read file content once
-#                 file_content = uploaded_file.read()
-#                 uploaded_file.seek(0)  # Reset file pointer
+            if file_extension not in allowed_extensions:
+                frappe.log_error(f"Invalid file type: {uploaded_file.filename}")
+                continue
+            try:
+                # Read file content once
+                file_content = uploaded_file.read()
+                uploaded_file.seek(0)  # Reset file pointer
                 
-#                 # Save file using Frappe's file manager
-#                 saved_file = save_file(
-#                     fname=uploaded_file.filename,
-#                     content=file_content,
-#                     dt=None,  # Don't attach to any document
-#                     dn=None,
-#                     folder=target_folder,
-#                     is_private=0
-#                 )
-#                 frappe.log_error(f"File saved successfully: {saved_file.name}")
-#                 # Create your custom Drive document if needed
-#                 # Adjust this based on your actual Drive doctype
-#                 try:
-#                     drive_doc = frappe.get_doc({
-#                         "doctype": "Drive Manager",  # Replace with your actual doctype
-#                         "file_name": uploaded_file.filename,
-#                         "attached_to_name":saved_file.name,
-#                         "file_url": saved_file.file_url,
-#                         "folder": target_folder,
-#                         "file_size": len(file_content),
-#                         "created_by": frappe.session.user,
-#                     })
-#                     drive_doc.insert(ignore_permissions=True)
-#                     drive_id = drive_doc.name
-#                     frappe.log_error(f"Drive document created: {drive_id}")
-#                 except Exception as drive_error:
-#                     # If Drive doctype doesn't exist or fails, just use the File document
-#                     frappe.log_error(f"Drive document creation failed: {str(drive_error)}")
-#                     drive_id = "Not Created"
+                # Save file using Frappe's file manager
+                saved_file = save_file(
+                    fname=uploaded_file.filename,
+                    content=file_content,
+                    dt=None,  # Don't attach to any document
+                    dn=None,
+                    folder=target_folder,
+                    is_private=0
+                )
+                frappe.log_error(f"File saved successfully: {saved_file.name}")
+                # Create your custom Drive document if needed
+                # Adjust this based on your actual Drive doctype
+                try:
+                    drive_doc = frappe.get_doc({
+                        "doctype": "Drive Manager",  # Replace with your actual doctype
+                        "file_name": uploaded_file.filename,
+                        "attached_to_name":saved_file.name,
+                        "file_url": saved_file.file_url,
+                        "folder": target_folder,
+                        "file_size": len(file_content),
+                        "created_by": frappe.session.user,
+                    })
+                    drive_doc.insert(ignore_permissions=True)
+                    drive_id = drive_doc.name
+                    frappe.log_error(f"Drive document created: {drive_id}")
+                except Exception as drive_error:
+                    # If Drive doctype doesn't exist or fails, just use the File document
+                    frappe.log_error(f"Drive document creation failed: {str(drive_error)}")
+                    drive_id = "Not Created"
                 
-#                 uploaded_files.append({
-#                     "file_id": saved_file.name,
-#                     "drive_id": drive_id,
-#                     "file_name": uploaded_file.filename,
-#                     "file_url": saved_file.file_url,
-#                     "folder": target_folder,
-#                     "relative_path": relative_path
-#                 })
+                uploaded_files.append({
+                    "file_id": saved_file.name,
+                    "drive_id": drive_id,
+                    "file_name": uploaded_file.filename,
+                    "file_url": saved_file.file_url,
+                    "folder": target_folder,
+                    "relative_path": relative_path
+                })
                 
-#             except Exception as file_error:
-#                 frappe.log_error(f"Error uploading file {uploaded_file.filename}: {str(file_error)}")
-#                 continue
+            except Exception as file_error:
+                frappe.log_error(f"Error uploading file {uploaded_file.filename}: {str(file_error)}")
+                continue
         
-#         if uploaded_files:
-#             return {
-#                 "success": True,
-#                 "folder":target_folder,
-#                 "uploaded_files":uploaded_files,
-#                 "total_uploaded": len(uploaded_files)
-#             }
-#         else:
-#             return {"success": False, "message": "No files were uploaded successfully"}
+        if uploaded_files:
+            return {
+                "success": True,
+                "folder":target_folder,
+                "uploaded_files":uploaded_files,
+                "total_uploaded": len(uploaded_files)
+            }
+        else:
+            return {"success": False, "message": "No files were uploaded successfully"}
             
-#     except Exception as e:
-#         frappe.log_error(f"Folder upload error: {str(e)}")
-#         return {"success": False, "message": f"Server error: {str(e)}"}
+    except Exception as e:
+        frappe.log_error(f"Folder upload error: {str(e)}")
+        return {"success": False, "message": f"Server error: {str(e)}"}
     
 
-# def create_folder_structure(folder_path):
-#     """Create folder structure recursively"""
-#     print("inside create_folder_structure")
-#     print("folder_path", folder_path)  # Home/demo
+def create_folder_structure(folder_path):
+    """Create folder structure recursively"""
+    print("inside create_folder_structure")
+    print("folder_path", folder_path)  # Home/demo
     
-#     try:
-#         # Split the path and create folders step by step
-#         if not folder_path or folder_path == "/":
-#             return
+    try:
+        # Split the path and create folders step by step
+        if not folder_path or folder_path == "/":
+            return
             
-#         # Clean up the path
-#         folder_path = folder_path.strip('/')
-#         folders = folder_path.split('/')  # ["Home","demo"]
-#         current_path = ""
+        # Clean up the path
+        folder_path = folder_path.strip('/')
+        folders = folder_path.split('/')  # ["Home","demo"]
+        current_path = ""
         
-#         print("folder_path stripped:", folder_path)
-#         print("folders split:", folders)
+        print("folder_path stripped:", folder_path)
+        print("folders split:", folders)
         
-#         for folder_name in folders:
-#             if not folder_name:
-#                 continue
+        for folder_name in folders:
+            if not folder_name:
+                continue
             
-#             # Skip "Home" as it's the root folder that already exists
-#             if folder_name == "Home":
-#                 continue
+            # Skip "Home" as it's the root folder that already exists
+            if folder_name == "Home":
+                continue
 
-#             # Build the path step by step
-#             parent_folder = current_path if current_path else "Home"
-#             current_path = f"{current_path}/{folder_name}" if current_path else folder_name
+            # Build the path step by step
+            parent_folder = current_path if current_path else "Home"
+            current_path = f"{current_path}/{folder_name}" if current_path else folder_name
             
-#             print("folder_name:", folder_name)
-#             print("parent_folder:", parent_folder)
-#             print("current_path:", current_path)
+            print("folder_name:", folder_name)
+            print("parent_folder:", parent_folder)
+            print("current_path:", current_path)
             
-#             # Check if File folder already exists
-#             existing_file_folder = frappe.db.get_value("File", {
-#                 "file_name": folder_name,
-#                 "is_folder": 1,
-#                 "folder": parent_folder
-#             })
+            # Check if File folder already exists
+            existing_file_folder = frappe.db.get_value("File", {
+                "file_name": folder_name,
+                "is_folder": 1,
+                "folder": parent_folder
+            })
             
-#             print("existing_file_folder:", existing_file_folder)
+            print("existing_file_folder:", existing_file_folder)
             
-#             # Check if Drive Manager folder already exists
-#             existing_drive_folder = None
-#             if existing_file_folder:
-#                 existing_drive_folder = frappe.db.get_value("Drive Manager", {
-#                     "attached_to_name": existing_file_folder,
-#                     "is_folder": 1,
-#                 })
+            # Check if Drive Manager folder already exists
+            existing_drive_folder = None
+            if existing_file_folder:
+                existing_drive_folder = frappe.db.get_value("Drive Manager", {
+                    "attached_to_name": existing_file_folder,
+                    "is_folder": 1,
+                })
             
-#             print("existing_drive_folder:", existing_drive_folder)
+            print("existing_drive_folder:", existing_drive_folder)
             
-#             # Create File folder if it doesn't exist
-#             if not existing_file_folder:
-#                 try:
-#                     print(f"Creating File folder: {folder_name} in {parent_folder}")
-#                     folder_doc = frappe.get_doc({
-#                         "doctype": "File",
-#                         "file_name": folder_name,
-#                         "is_folder": 1,
-#                         "folder": parent_folder
-#                     })
-#                     folder_doc.insert(ignore_permissions=True)
-#                     existing_file_folder = folder_doc.name
-#                     print(f"Created File folder: {folder_name} with ID: {existing_file_folder}")
+            # Create File folder if it doesn't exist
+            if not existing_file_folder:
+                try:
+                    print(f"Creating File folder: {folder_name} in {parent_folder}")
+                    folder_doc = frappe.get_doc({
+                        "doctype": "File",
+                        "file_name": folder_name,
+                        "is_folder": 1,
+                        "folder": parent_folder
+                    })
+                    folder_doc.insert(ignore_permissions=True)
+                    existing_file_folder = folder_doc.name
+                    print(f"Created File folder: {folder_name} with ID: {existing_file_folder}")
                     
-#                 except Exception as folder_error:
-#                     frappe.log_error(f"Error creating File folder {folder_name}: {str(folder_error)}")
-#                     raise folder_error
+                except Exception as folder_error:
+                    frappe.log_error(f"Error creating File folder {folder_name}: {str(folder_error)}")
+                    raise folder_error
             
-#             # Create Drive Manager folder if it doesn't exist
-#             if not existing_drive_folder:
-#                 try:
-#                     print(f"Creating Drive Manager folder: {folder_name}")
-#                     drive_folder_doc = frappe.get_doc({
-#                         "doctype": "Drive Manager",
-#                         "file_name": folder_name,
-#                         "attached_to_name": existing_file_folder,  # Link to File record
-#                         "is_folder": 1,
-#                         "folder": parent_folder,
-#                         "created_by": frappe.session.user
-#                     })
-#                     drive_folder_doc.insert(ignore_permissions=True)
-#                     print(f"Created Drive Manager folder: {folder_name} linked to {existing_file_folder}")
+            # Create Drive Manager folder if it doesn't exist
+            if not existing_drive_folder:
+                try:
+                    print(f"Creating Drive Manager folder: {folder_name}")
+                    drive_folder_doc = frappe.get_doc({
+                        "doctype": "Drive Manager",
+                        "file_name": folder_name,
+                        "attached_to_name": existing_file_folder,  # Link to File record
+                        "is_folder": 1,
+                        "folder": parent_folder,
+                        "created_by": frappe.session.user
+                    })
+                    drive_folder_doc.insert(ignore_permissions=True)
+                    print(f"Created Drive Manager folder: {folder_name} linked to {existing_file_folder}")
                     
-#                 except Exception as drive_error:
-#                     frappe.log_error(f"Error creating Drive Manager folder {folder_name}: {str(drive_error)}")
-#                     raise drive_error
-#             else:
-#                 print(f"Both File and Drive Manager folders already exist for: {folder_name}")
+                except Exception as drive_error:
+                    frappe.log_error(f"Error creating Drive Manager folder {folder_name}: {str(drive_error)}")
+                    raise drive_error
+            else:
+                print(f"Both File and Drive Manager folders already exist for: {folder_name}")
                 
-#     except Exception as e:
-#         frappe.log_error(f"Error in create_folder_structure for path {folder_path}: {str(e)}")
-#         raise e
+    except Exception as e:
+        frappe.log_error(f"Error in create_folder_structure for path {folder_path}: {str(e)}")
+        raise e
 
 
-# def create_folder_structure(folder_path):
-#     """Create folder structure recursively"""
-#     print("inside create_folder_structure")
-#     print("folder_path",folder_path) # Home/demo
-#     try:
-#         # Split the path and create folders step by step
-#         if not folder_path or folder_path == "/":
-#             return
-#         # Clean up the path
-#         folder_path = folder_path.strip('/')
-#         folders = folder_path.split('/')  #["Home","demo"]
-#         current_path = ""
-#         print("folder_path striped :",folder_path)
-#         print("folders splited :",folders)
-#         for folder_name in folders:
-#             if not folder_name:
-#                 continue
+def create_folder_structure(folder_path):
+    """Create folder structure recursively"""
+    print("inside create_folder_structure")
+    print("folder_path",folder_path) # Home/demo
+    try:
+        # Split the path and create folders step by step
+        if not folder_path or folder_path == "/":
+            return
+        # Clean up the path
+        folder_path = folder_path.strip('/')
+        folders = folder_path.split('/')  #["Home","demo"]
+        current_path = ""
+        print("folder_path striped :",folder_path)
+        print("folders splited :",folders)
+        for folder_name in folders:
+            if not folder_name:
+                continue
 
-#             if folder_name == "Home":
-#                 parent_folder = folder_name
-
-
+            if folder_name == "Home":
+                parent_folder = folder_name
 
 
-#             # Build the path step by step
-#             # parent_folder = current_path if current_path else "Home"
-#             print("parent_folder",parent_folder)
-#             current_path = f"{current_path}/{folder_name}" if current_path else folder_name
-#             print("current_path",current_path)
+
+
+            # Build the path step by step
+            # parent_folder = current_path if current_path else "Home"
+            print("parent_folder",parent_folder)
+            current_path = f"{current_path}/{folder_name}" if current_path else folder_name
+            print("current_path",current_path)
             
-#             # Check if folder already exists
-#             existing_file_folder = frappe.db.get_value("File", {
-#                 "file_name": folder_name,
-#                 "is_folder": 1,
-#                 "folder": parent_folder
-#             })
+            # Check if folder already exists
+            existing_file_folder = frappe.db.get_value("File", {
+                "file_name": folder_name,
+                "is_folder": 1,
+                "folder": parent_folder
+            })
 
-#             print("existing_folder",existing_file_folder)
+            print("existing_folder",existing_file_folder)
 
-#             existing_drive_folder = frappe.db.get_value("Drive Manager", {
-#                 "attached_to_name": folder_path,
-#                 "is_folder": 1,
-#             })
+            existing_drive_folder = frappe.db.get_value("Drive Manager", {
+                "attached_to_name": folder_path,
+                "is_folder": 1,
+            })
 
-#             print("existing_drive_folder",existing_drive_folder)
+            print("existing_drive_folder",existing_drive_folder)
 
 
-#             if not existing_file_folder:
-#                 try:
-#                     # Create the folder
-#                     folder_doc = frappe.get_doc({
-#                         "doctype": "File",
-#                         "file_name": folder_name,
-#                         "is_folder": 1,
-#                         "folder": parent_folder
-#                     })
-#                     folder_doc.insert(ignore_permissions=True)
+            if not existing_file_folder:
+                try:
+                    # Create the folder
+                    folder_doc = frappe.get_doc({
+                        "doctype": "File",
+                        "file_name": folder_name,
+                        "is_folder": 1,
+                        "folder": parent_folder
+                    })
+                    folder_doc.insert(ignore_permissions=True)
                     
-#                     frappe.log_error(f"Created folder: {folder_name} in {parent_folder}")
-#                 except Exception as folder_error:
-#                     frappe.log_error(f"Error creating folder {folder_name}: {str(folder_error)}")
-#                     raise folder_error
+                    frappe.log_error(f"Created folder: {folder_name} in {parent_folder}")
+                except Exception as folder_error:
+                    frappe.log_error(f"Error creating folder {folder_name}: {str(folder_error)}")
+                    raise folder_error
                 
-#             elif not existing_drive_folder:
-#                 try:
-#                     # create drive folder
-#                     drive_folder_doc = frappe.get_doc({
-#                         "doctype": "Drive Manager",
-#                         "file_name": folder_name,
-#                         "attached_to_name":existing_file_folder,
-#                         "is_folder": 1,
-#                         "folder": parent_folder,
-#                         "created_by":frappe.session.user
-#                     })
-#                     drive_folder_doc.insert(ignore_permissions=True)
-#                     frappe.log_error(f"Created drive folder: {folder_name} in {parent_folder}")
-#                 except Exception as folder_error:
-#                     frappe.log_error(f"Error creating drive folder {folder_name}: {str(folder_error)}")
-#                     raise folder_error
-#             else:
-#                 try:
-#                     # Create the both folder
-#                     folder_doc = frappe.get_doc({
-#                         "doctype": "File",
-#                         "file_name": folder_name,
-#                         "is_folder": 1,
-#                         "folder": parent_folder
-#                     })
-#                     folder_doc.insert(ignore_permissions=True)
-#                     drive_folder_doc = frappe.get_doc({
-#                         "doctype": "Drive Manager",
-#                         "file_name": folder_name,
-#                         "attached_to_name":folder_doc.name,
-#                         "is_folder": 1,
-#                         "folder": parent_folder,
-#                         "created_by":frappe.session.user
-#                     })
-#                     drive_folder_doc.insert(ignore_permissions=True)
-#                     print("created both folders")
-#                     frappe.log_error(f"Created folder: {folder_name} in {parent_folder}")
-#                 except Exception as folder_error:
-#                     frappe.log_error(f"Error creating folder {folder_name}: {str(folder_error)}")
-#                     raise folder_error
-#     except Exception as e:
-#         frappe.log_error(f"Error in create_folder_structure for path {folder_path}: {str(e)}")
-#         raise e
+            elif not existing_drive_folder:
+                try:
+                    # create drive folder
+                    drive_folder_doc = frappe.get_doc({
+                        "doctype": "Drive Manager",
+                        "file_name": folder_name,
+                        "attached_to_name":existing_file_folder,
+                        "is_folder": 1,
+                        "folder": parent_folder,
+                        "created_by":frappe.session.user
+                    })
+                    drive_folder_doc.insert(ignore_permissions=True)
+                    frappe.log_error(f"Created drive folder: {folder_name} in {parent_folder}")
+                except Exception as folder_error:
+                    frappe.log_error(f"Error creating drive folder {folder_name}: {str(folder_error)}")
+                    raise folder_error
+            else:
+                try:
+                    # Create the both folder
+                    folder_doc = frappe.get_doc({
+                        "doctype": "File",
+                        "file_name": folder_name,
+                        "is_folder": 1,
+                        "folder": parent_folder
+                    })
+                    folder_doc.insert(ignore_permissions=True)
+                    drive_folder_doc = frappe.get_doc({
+                        "doctype": "Drive Manager",
+                        "file_name": folder_name,
+                        "attached_to_name":folder_doc.name,
+                        "is_folder": 1,
+                        "folder": parent_folder,
+                        "created_by":frappe.session.user
+                    })
+                    drive_folder_doc.insert(ignore_permissions=True)
+                    print("created both folders")
+                    frappe.log_error(f"Created folder: {folder_name} in {parent_folder}")
+                except Exception as folder_error:
+                    frappe.log_error(f"Error creating folder {folder_name}: {str(folder_error)}")
+                    raise folder_error
+    except Exception as e:
+        frappe.log_error(f"Error in create_folder_structure for path {folder_path}: {str(e)}")
+        raise e
 
 
 
-# @frappe.whitelist()
-# def create_drive_files(folder,filename,attached_to_name):
-#     f = frappe.get_doc(
-#         {
-#             "doctype": "Drive Manager",
-#             "file_name": filename,
-#             "created_by": frappe.session.user,
-#             "folder": folder,
-# 			"attached_to_name":attached_to_name
-#         }
-#     )
-#     f.flags.ignore_permissions = True
-#     f.insert()
-#     return f
+@frappe.whitelist()
+def create_drive_files(folder,filename,attached_to_name):
+    f = frappe.get_doc(
+        {
+            "doctype": "Drive Manager",
+            "file_name": filename,
+            "created_by": frappe.session.user,
+            "folder": folder,
+			"attached_to_name":attached_to_name
+        }
+    )
+    f.flags.ignore_permissions = True
+    f.insert()
+    return f
 
-# @frappe.whitelist()
-# def get_folder_contents(folder_name,owner):
-#     # frappe.msgprint(str(folder_name))
-#     files = frappe.get_all("File",filters={"folder": folder_name},fields=["name", "file_name", "file_url", "is_folder", "creation"])
-#     return {"files": files}
+@frappe.whitelist()
+def get_folder_contents(folder_name,owner):
+    # frappe.msgprint(str(folder_name))
+    files = frappe.get_all("File",filters={"folder": folder_name},fields=["name", "file_name", "file_url", "is_folder", "creation"])
+    return {"files": files}'''

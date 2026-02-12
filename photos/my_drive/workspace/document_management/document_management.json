@@ -1,0 +1,45 @@
+{
+ "charts": [],
+ "content": "[{\"id\":\"eiq6tce189\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"File Manager\",\"col\":5}},{\"id\":\"cCba8Expne\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"User Permissions\",\"col\":5}}]",
+ "creation": "2026-01-13 09:44:22.471087",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "external-link",
+ "idx": 0,
+ "indicator_color": "",
+ "is_hidden": 0,
+ "label": "Document Management",
+ "links": [],
+ "modified": "2026-01-26 19:27:35.885812",
+ "modified_by": "Administrator",
+ "module": "My Drive",
+ "name": "Document Management",
+ "number_cards": [],
+ "owner": "sagar.patil@datamann.in",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 3.0,
+ "shortcuts": [
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "File Manager",
+   "link_to": "my-drive-v2",
+   "type": "Page"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "List",
+   "label": "User Permissions",
+   "link_to": "Drive Access",
+   "stats_filter": "[]",
+   "type": "DocType"
+  }
+ ],
+ "title": "Document Management"
+}

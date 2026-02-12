@@ -106,9 +106,16 @@ def get_file_dashboard(*args, **kwargs):
 def process_file(file: "File", event: str) -> "Photo":
     if event != "after_insert":
         raise NotImplementedError
+    
+    if not file.content_type:
+        return
 
     if file.is_folder or not file.content_type.startswith("image"):
         return
+    
+    if not file.file_url.startswith("/files/my-drive/"):
+        return
+    
 
     photo = frappe.new_doc("Photo")
     photo.photo = file.name
@@ -118,3 +125,34 @@ def process_file(file: "File", event: str) -> "Photo":
     return photo.save()
 
 
+
+
+# Added by Sagar Patil
+import os
+from frappe.exceptions import LinkValidationError
+
+def create_folder(folder:"File",event:str):
+
+    if event != "after_insert":
+        raise NotImplementedError
+
+    if not folder.is_folder:
+        return
+    try:
+        drive = frappe.new_doc("Drive Manager")
+        drive.file_name = folder.file_name
+        drive.attached_to_name = folder.name
+        drive.is_folder = folder.is_folder
+        drive.created_by = frappe.session.user
+        head, tail = os.path.split(folder.name)
+        drive.folder = head
+
+        frappe.msgprint(str("{0} Created Folder Successfully".format(folder.file_name)))
+
+        return drive.save()
+    except LinkValidationError:
+        frappe.msgprint("Parent folder not found. Cannot create Drive Manager entry.")
+    
+    except Exception as e:
+        # Catch any other unexpected error
+        frappe.msgprint(f"Unexpected error: {str(e)}")

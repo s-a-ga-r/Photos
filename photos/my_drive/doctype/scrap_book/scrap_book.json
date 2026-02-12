@@ -1,0 +1,127 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-01-02 22:21:02.820082",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "file_name",
+  "original_file_url",
+  "scrap_file_url",
+  "deleted_by",
+  "status",
+  "column_break_jngs",
+  "deleted_file_id",
+  "deleted_drive_id",
+  "restored"
+ ],
+ "fields": [
+  {
+   "fieldname": "file_name",
+   "fieldtype": "Data",
+   "label": "File Name"
+  },
+  {
+   "fieldname": "original_file_url",
+   "fieldtype": "Data",
+   "label": "Original File URL"
+  },
+  {
+   "fieldname": "scrap_file_url",
+   "fieldtype": "Data",
+   "label": "Scrap File URL"
+  },
+  {
+   "fieldname": "deleted_by",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Deleted By"
+  },
+  {
+   "default": "Trashed",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "label": "Status",
+   "options": "\nTrashed\nRestored\nDeleted",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_jngs",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "deleted_file_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Deleted File ID"
+  },
+  {
+   "fieldname": "deleted_drive_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Deleted Drive ID"
+  },
+  {
+   "default": "0",
+   "depends_on": "doc.status == \"Restored\";",
+   "fieldname": "restored",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Restored"
+  }
+ ],
+ "grid_page_length": 50,
+ "hide_toolbar": 1,
+ "in_create": 1,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-01-20 16:40:18.922062",
+ "modified_by": "sagarpatil.powerit@gmail.com",
+ "module": "My Drive",
+ "name": "Scrap Book",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Administrator",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [
+  {
+   "color": "Blue",
+   "title": "Trashed"
+  },
+  {
+   "color": "Green",
+   "title": "Restored"
+  },
+  {
+   "color": "Red",
+   "title": "Deleted"
+  }
+ ]
+}

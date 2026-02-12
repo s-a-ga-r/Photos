@@ -956,7 +956,14 @@ class MyDrive {
 		let baseFolderName = self.current_folder;
 		
 		// Create FormData for multiple files and folder structure
+
+		console.log("sending nested folderdata",folderData);
+		let top_level = folderData.folderPaths[0]
+
+		let uploadDialog = this.createUploadProgressDialog(folderData.files);
+
 		let form_data = new FormData();
+		form_data.append("top_folder", top_level); // Top-level folder
 		form_data.append("base_folder", baseFolderName);
 		form_data.append("total_files", folderData.files.length);
 		form_data.append("total_folders", folderData.folderPaths.length);
@@ -987,7 +994,17 @@ class MyDrive {
 				if(response.message && response.message.success) {
 					let files = response.message.uploaded_files;
 					let folder = response.message.folder;
+					let folders = response.message.uploaded_folders;
 					let createdFolders = response.message.created_folders;
+
+					let matchedFiles = files.filter(item => item.folder === folder);
+					let matchedFolders = folders.filter(item => item.folder === folder);
+
+					let files_folders = [...matchedFiles, ...matchedFolders];
+
+					console.log("Files uploaded to the current folder",files_folders);
+
+					self.completeAllUploads(uploadDialog, files.length, createdFolders);
 					
 					// console.log(`Successfully created ${createdFolders} folders and uploaded ${files.length} files`);
 					
@@ -995,33 +1012,36 @@ class MyDrive {
 					$(".empty-state-1").remove();
 					self.makeURL(folder);
 					self.BackButton();
-					self.FileUI(files); // Use your existing FileUI with animation
+					self.FileUI(files_folders); // Use your existing FileUI with animation
 					
-					frappe.show_alert({
-						message: __('Nested folder structure uploaded! {0} folders created, {1} files uploaded.', [createdFolders, files.length]),
-						indicator: 'green'
-					}, 5);
+					// frappe.show_alert({
+					// 	message: __('Nested folder structure uploaded! {0} folders created, {1} files uploaded.', [createdFolders, files.length]),
+					// 	indicator: 'green'
+					// }, 5);
 					
 				} else {
+					self.handleUploadError(uploadDialog, response.message?.message || "Unknown error");
 					frappe.msgprint(__("Upload failed: {0}", [response.message?.message || "Unknown error"]));
 				}
 			} else {
+				self.handleUploadError(uploadDialog, xhr.statusText);
 				console.error("Folder upload failed:", xhr.statusText);
 				frappe.msgprint(__("Error uploading folder: {0}", [xhr.statusText]));
 			}
 		};
 		
 		xhr.onerror = function() {
+			self.handleUploadError(uploadDialog, "Network error");
 			console.error("Folder upload failed:", xhr.statusText);
 			frappe.msgprint(__("Error uploading folder"));
 		};
-		
+
 		// Show progress with more detail
 		xhr.upload.onprogress = function(event) {
 			if (event.lengthComputable) {
 				const percentComplete = (event.loaded / event.total) * 100;
 				console.log(`Nested folder upload progress: ${percentComplete.toFixed(2)}%`);
-				
+				self.updateUploadProgress(uploadDialog, percentComplete, folderData.files);
 				// Optional: Show progress bar
 				// frappe.show_progress('Uploading...', percentComplete, 100);
 			}
@@ -1030,63 +1050,644 @@ class MyDrive {
 		xhr.send(form_data);
 	}
 
+	// createUploadProgressDialog(files) {
+	// 	// Remove existing upload dialog if any
+	// 	$('.upload-progress-dialog').remove();
+		
+	// 	const totalFiles = files.length;
+		
+	// 	let dialogHTML = `
+	// 		<div class="upload-progress-dialog" style="
+	// 			position: fixed;
+	// 			bottom: 20px;
+	// 			right: 20px;
+	// 			width: 350px;
+	// 			max-height: 400px;
+	// 			background: white;
+	// 			border-radius: 8px;
+	// 			box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+	// 			z-index: 1050;
+	// 			font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+	// 		">
+	// 			<div class="upload-header" style="
+	// 				padding: 16px 20px 12px;
+	// 				border-bottom: 1px solid #e5e7eb;
+	// 				display: flex;
+	// 				justify-content: space-between;
+	// 				align-items: center;
+	// 			">
+	// 				<div style="display: flex; align-items: center; gap: 8px;">
+	// 					<div class="upload-status-icon" style="
+	// 						width: 20px;
+	// 						height: 20px;
+	// 						border: 2px solid #3b82f6;
+	// 						border-top: 2px solid transparent;
+	// 						border-radius: 50%;
+	// 						animation: spin 1s linear infinite;
+	// 					"></div>
+	// 					<span class="upload-status-text" style="font-weight: 500; color: #374151;">
+	// 						Uploading ${totalFiles} files
+	// 					</span>
+	// 				</div>
+	// 				<button class="close-dialog" style="
+	// 					background: none;
+	// 					border: none;
+	// 					font-size: 18px;
+	// 					cursor: pointer;
+	// 					color: #6b7280;
+	// 					padding: 0;
+	// 					width: 20px;
+	// 					height: 20px;
+	// 					display: flex;
+	// 					align-items: center;
+	// 					justify-content: center;
+	// 				" onclick="this.closest('.upload-progress-dialog').remove()">×</button>
+	// 			</div>
+				
+	// 			<div class="upload-body" style="
+	// 				max-height: 300px;
+	// 				overflow-y: auto;
+	// 				padding: 0;
+	// 			">
+	// 				<div class="file-list" style="padding: 0;">
+	// 					${files.map((fileInfo, index) => `
+	// 						<div class="file-item" data-file-index="${index}" style="
+	// 							padding: 12px 20px;
+	// 							border-bottom: 1px solid #f3f4f6;
+	// 							display: flex;
+	// 							align-items: center;
+	// 							gap: 12px;
+	// 						">
+	// 							<div class="file-icon" style="
+	// 								width: 24px;
+	// 								height: 24px;
+	// 								background: #f3f4f6;
+	// 								border-radius: 4px;
+	// 								display: flex;
+	// 								align-items: center;
+	// 								justify-content: center;
+	// 								font-size: 10px;
+	// 								color: #6b7280;
+	// 								flex-shrink: 0;
+	// 							">
+	// 								${this.getFileIcon(fileInfo.fileName)}
+	// 							</div>
+	// 							<div class="file-info" style="flex: 1; min-width: 0;">
+	// 								<div class="file-name" style="
+	// 									font-size: 13px;
+	// 									color: #374151;
+	// 									white-space: nowrap;
+	// 									overflow: hidden;
+	// 									text-overflow: ellipsis;
+	// 									font-weight: 500;
+	// 								">${fileInfo.fileName}</div>
+	// 								<div class="file-progress" style="
+	// 									font-size: 11px;
+	// 									color: #6b7280;
+	// 									margin-top: 2px;
+	// 								">In Progress</div>
+	// 							</div>
+	// 							<div class="file-status" style="
+	// 								width: 16px;
+	// 								height: 16px;
+	// 								border: 1.5px solid #d1d5db;
+	// 								border-radius: 50%;
+	// 								flex-shrink: 0;
+	// 								display: flex;
+	// 								align-items: center;
+	// 								justify-content: center;
+	// 							">
+	// 								<div style="
+	// 									width: 6px;
+	// 									height: 6px;
+	// 									background: #d1d5db;
+	// 									border-radius: 50%;
+	// 								"></div>
+	// 							</div>
+	// 						</div>
+	// 					`).join('')}
+	// 				</div>
+	// 			</div>
+				
+	// 			<div class="upload-footer" style="
+	// 				padding: 12px 20px;
+	// 				border-top: 1px solid #e5e7eb;
+	// 				background: #f9fafb;
+	// 				border-radius: 0 0 8px 8px;
+	// 			">
+	// 				<div class="progress-info" style="
+	// 					display: flex;
+	// 					justify-content: space-between;
+	// 					align-items: center;
+	// 					font-size: 12px;
+	// 					color: #6b7280;
+	// 				">
+	// 					<span class="progress-text">0% uploaded</span>
+	// 					<span class="files-count">0 of ${totalFiles} files</span>
+	// 				</div>
+	// 				<div class="progress-bar" style="
+	// 					width: 100%;
+	// 					height: 4px;
+	// 					background: #e5e7eb;
+	// 					border-radius: 2px;
+	// 					margin-top: 8px;
+	// 					overflow: hidden;
+	// 				">
+	// 					<div class="progress-fill" style="
+	// 						height: 100%;
+	// 						background: #3b82f6;
+	// 						width: 0%;
+	// 						transition: width 0.3s ease;
+	// 						border-radius: 2px;
+	// 					"></div>
+	// 				</div>
+	// 			</div>
+	// 		</div>
+			
+	// 		<style>
+	// 			@keyframes spin {
+	// 				0% { transform: rotate(0deg); }
+	// 				100% { transform: rotate(360deg); }
+	// 			}
+				
+	// 			.upload-progress-dialog .upload-body::-webkit-scrollbar {
+	// 				width: 4px;
+	// 			}
+				
+	// 			.upload-progress-dialog .upload-body::-webkit-scrollbar-track {
+	// 				background: #f1f5f9;
+	// 			}
+				
+	// 			.upload-progress-dialog .upload-body::-webkit-scrollbar-thumb {
+	// 				background: #cbd5e1;
+	// 				border-radius: 2px;
+	// 			}
+	// 		</style>
+	// 	`;
+		
+	// 	$('body').append(dialogHTML);
+	// 	return $('.upload-progress-dialog');
+	// }
+	createUploadProgressDialog(files) {
+		// Remove existing upload dialog if any
+		$('.upload-progress-dialog').remove();
+		
+		const totalFiles = files.length;
+		
+		let dialogHTML = `
+			<div class="upload-progress-dialog" style="
+				position: fixed;
+				bottom: 20px;
+				right: 20px;
+				width: 350px;
+				max-height: 400px;
+				background: white;
+				border-radius: 8px;
+				box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+				z-index: 1050;
+				font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+			">
+				<div class="upload-header" style="
+					padding: 16px 20px 12px;
+					border-bottom: 1px solid #e5e7eb;
+					display: flex;
+					justify-content: space-between;
+					align-items: center;
+				">
+					<div style="display: flex; align-items: center; gap: 8px;">
+						<div class="upload-status-icon" style="
+							width: 20px;
+							height: 20px;
+							border: 2px solid #3b82f6;
+							border-top: 2px solid transparent;
+							border-radius: 50%;
+							animation: spin 1s linear infinite;
+						"></div>
+						<span class="upload-status-text" style="font-weight: 500; color: #374151;">
+							Uploading ${totalFiles} files
+						</span>
+					</div>
+					<button class="close-dialog" style="
+						background: none;
+						border: none;
+						font-size: 18px;
+						cursor: pointer;
+						color: #6b7280;
+						padding: 0;
+						width: 20px;
+						height: 20px;
+						display: flex;
+						align-items: center;
+						justify-content: center;
+					" onclick="this.closest('.upload-progress-dialog').remove()">×</button>
+				</div>
+				
+				<div class="upload-body" style="
+					max-height: 300px;
+					overflow-y: auto;
+					padding: 0;
+				">
+					<div class="file-list" style="padding: 0;">
+						${files.map((fileInfo, index) => `
+							<div class="file-item" data-file-index="${index}" style="
+								padding: 12px 20px;
+								border-bottom: 1px solid #f3f4f6;
+							">
+								<div style="display: flex; align-items: center; gap: 12px;">
+									<div class="file-icon" style="
+										width: 24px;
+										height: 24px;
+										background: #f3f4f6;
+										border-radius: 4px;
+										display: flex;
+										align-items: center;
+										justify-content: center;
+										font-size: 10px;
+										color: #6b7280;
+										flex-shrink: 0;
+									">
+										${this.getFileIcon(fileInfo.fileName)}
+									</div>
+									<div class="file-info" style="flex: 1; min-width: 0;">
+										<div class="file-name" style="
+											font-size: 13px;
+											color: #374151;
+											white-space: nowrap;
+											overflow: hidden;
+											text-overflow: ellipsis;
+											font-weight: 500;
+										">${fileInfo.fileName}</div>
+										<div class="file-progress-text" style="
+											font-size: 11px;
+											color: #6b7280;
+											margin-top: 2px;
+										">Waiting...</div>
+									</div>
+									<div class="file-status" style="
+										width: 16px;
+										height: 16px;
+										border: 1.5px solid #d1d5db;
+										border-radius: 50%;
+										flex-shrink: 0;
+										display: flex;
+										align-items: center;
+										justify-content: center;
+									">
+										<div style="
+											width: 6px;
+											height: 6px;
+											background: #d1d5db;
+											border-radius: 50%;
+										"></div>
+									</div>
+								</div>
+								
+								<!-- Individual file progress bar -->
+								<div class="file-progress-bar" style="
+									width: 100%;
+									height: 3px;
+									background: #e5e7eb;
+									border-radius: 2px;
+									margin-top: 8px;
+									overflow: hidden;
+									display: none;
+								">
+									<div class="file-progress-fill" style="
+										height: 100%;
+										background: #3b82f6;
+										width: 0%;
+										transition: width 0.3s ease;
+										border-radius: 2px;
+									"></div>
+								</div>
+							</div>
+						`).join('')}
+					</div>
+				</div>
+				
+				<div class="upload-footer" style="
+					padding: 12px 20px;
+					border-top: 1px solid #e5e7eb;
+					background: #f9fafb;
+					border-radius: 0 0 8px 8px;
+				">
+					<div class="progress-info" style="
+						display: flex;
+						justify-content: space-between;
+						align-items: center;
+						font-size: 12px;
+						color: #6b7280;
+					">
+						<span class="overall-status">Starting upload...</span>
+						<span class="files-count">0 of ${totalFiles} completed</span>
+					</div>
+				</div>
+			</div>
+			
+			<style>
+				@keyframes spin {
+					0% { transform: rotate(0deg); }
+					100% { transform: rotate(360deg); }
+				}
+				
+				.upload-progress-dialog .upload-body::-webkit-scrollbar {
+					width: 4px;
+				}
+				
+				.upload-progress-dialog .upload-body::-webkit-scrollbar-track {
+					background: #f1f5f9;
+				}
+				
+				.upload-progress-dialog .upload-body::-webkit-scrollbar-thumb {
+					background: #cbd5e1;
+					border-radius: 2px;
+				}
+			</style>
+		`;
+		
+		$('body').append(dialogHTML);
+		return $('.upload-progress-dialog');
+	}
+
+	updateUploadProgress(dialog, percentComplete, files) {
+		let self = this
+		const totalFiles = files.length;
+		
+		// Calculate total size of all files
+		const totalSize = files.reduce((sum, fileInfo) => sum + (fileInfo.file.size || 0), 0);
+		const uploadedBytes = (percentComplete / 100) * totalSize;
+		
+		let currentUploadedBytes = 0;
+		let completedFiles = 0;
+		let currentUploadingIndex = -1;
+		let currentFileProgress = 0;
+		
+		// Calculate which files are completed and current file progress
+		for (let i = 0; i < files.length; i++) {
+			const fileSize = files[i].file.size || 0;
+			
+			if (currentUploadedBytes + fileSize <= uploadedBytes) {
+				// This file is completed
+				currentUploadedBytes += fileSize;
+				completedFiles++;
+			} else {
+				// This file is currently being uploaded
+				currentUploadingIndex = i;
+				const remainingBytes = uploadedBytes - currentUploadedBytes;
+				currentFileProgress = fileSize > 0 ? (remainingBytes / fileSize) * 100 : 0;
+				break;
+			}
+		}
+		
+		// Update overall status
+		dialog.find('.overall-status').text(`Uploading files... ${Math.round(percentComplete)}%`);
+		dialog.find('.files-count').text(`${completedFiles} of ${totalFiles} completed`);
+		
+		// Update individual file progress
+		dialog.find('.file-item').each(function(index) {
+			const $fileItem = $(this);
+			const $progressBar = $fileItem.find('.file-progress-bar');
+			const $progressFill = $fileItem.find('.file-progress-fill');
+			const $progressText = $fileItem.find('.file-progress-text');
+			const $status = $fileItem.find('.file-status');
+			const fileSize = files[index].file.size || 0;
+			const fileSizeText = self.formatFileSize(fileSize);
+			
+			if (index < completedFiles) {
+				// File completed
+				$progressBar.show();
+				$progressFill.css('width', '100%').css('background', '#10b981');
+				$progressText.text(`Completed • ${fileSizeText}`).css('color', '#059669');
+				$status.html(`
+					<div style="
+						width: 12px;
+						height: 12px;
+						background: #10b981;
+						border-radius: 50%;
+						display: flex;
+						align-items: center;
+						justify-content: center;
+					">
+						<svg width="8" height="6" viewBox="0 0 8 6" fill="none">
+							<path d="M1 3L3 5L7 1" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+						</svg>
+					</div>
+				`).css('border', 'none');
+				
+			} else if (index === currentUploadingIndex) {
+				// Currently uploading file
+				$progressBar.show();
+				$progressFill.css('width', Math.max(0, Math.min(100, currentFileProgress)) + '%').css('background', '#3b82f6');
+				$progressText.text(`Uploading ${Math.round(currentFileProgress)}% • ${fileSizeText}`).css('color', '#3b82f6');
+				$status.html(`
+					<div style="
+						width: 12px;
+						height: 12px;
+						border: 2px solid #3b82f6;
+						border-top: 2px solid transparent;
+						border-radius: 50%;
+						animation: spin 1s linear infinite;
+					"></div>
+				`).css('border', 'none');
+				
+			} else {
+				// Waiting files
+				$progressBar.hide();
+				$progressText.text(`Waiting... • ${fileSizeText}`).css('color', '#6b7280');
+				$status.html(`
+					<div style="
+						width: 6px;
+						height: 6px;
+						background: #d1d5db;
+						border-radius: 50%;
+					"></div>
+				`).css('border', '1.5px solid #d1d5db');
+			}
+		});
+	}
+
+	formatFileSize(bytes) {
+		if (bytes === 0) return '0 B';
+		const k = 1024;
+		const sizes = ['B', 'KB', 'MB', 'GB'];
+		const i = Math.floor(Math.log(bytes) / Math.log(k));
+		return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+	}
+
+	completeAllUploads(dialog, uploadedFiles, createdFolders) {
+		// Stop loading animation
+		dialog.find('.upload-status-icon').css('animation', 'none').html(`
+			<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+				<path d="M3 8L6 11L13 4" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+			</svg>
+		`).css({
+			'border': 'none',
+			'background': '#10b981',
+			'border-radius': '50%',
+			'display': 'flex',
+			'align-items': 'center',
+			'justify-content': 'center'
+		});
+		
+		// Update header text
+		dialog.find('.upload-status-text').text(`${uploadedFiles} uploads completed`).css('color', '#059669');
+		
+		// Update footer status
+		dialog.find('.overall-status').text('All uploads completed!').css('color', '#059669');
+		dialog.find('.files-count').text(`${uploadedFiles} of ${uploadedFiles} completed`);
+		
+		// Mark all files as completed with individual progress bars at 100%
+		dialog.find('.file-item').each(function() {
+			const $fileItem = $(this);
+			const $progressBar = $fileItem.find('.file-progress-bar');
+			const $progressFill = $fileItem.find('.file-progress-fill');
+			const $progressText = $fileItem.find('.file-progress-text');
+			const $status = $fileItem.find('.file-status');
+			
+			$progressBar.show();
+			$progressFill.css('width', '100%').css('background', '#10b981');
+			$progressText.text('Completed').css('color', '#059669');
+			$status.html(`
+				<div style="
+					width: 12px;
+					height: 12px;
+					background: #10b981;
+					border-radius: 50%;
+					display: flex;
+					align-items: center;
+					justify-content: center;
+				">
+					<svg width="8" height="6" viewBox="0 0 8 6" fill="none">
+						<path d="M1 3L3 5L7 1" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+					</svg>
+				</div>
+			`).css('border', 'none');
+		});
+		// Auto-hide after 5 seconds
+		setTimeout(() => {
+			dialog.fadeOut(300, function() {
+				$(this).remove();
+			});
+		}, 5000);
+	}
+
+	handleUploadError(dialog, errorMessage) {
+		// Update to error state
+		dialog.find('.upload-status-icon').css('animation', 'none').html('⚠').css({
+			'border': 'none',
+			'background': '#ef4444',
+			'color': 'white',
+			'border-radius': '50%',
+			'display': 'flex',
+			'align-items': 'center',
+			'justify-content': 'center'
+		});
+		dialog.find('.upload-status-text').text('Upload failed').css('color', '#dc2626');
+		dialog.find('.overall-status').text('Upload failed').css('color', '#dc2626');
+
+		// Mark remaining files as failed with red progress bars
+		dialog.find('.file-item').each(function() {
+			const $fileItem = $(this);
+			const $progressText = $fileItem.find('.file-progress-text');
+			const $progressBar = $fileItem.find('.file-progress-bar');
+			const $progressFill = $fileItem.find('.file-progress-fill');
+			
+			if ($progressText.text() !== 'Completed') {
+				$progressBar.show();
+				$progressFill.css('background', '#ef4444').css('width', '100%');
+				$progressText.text('Failed').css('color', '#dc2626');
+			}
+		});
+	}
+
+	getFileIcon(filename) {
+		const extension = filename.split('.').pop().toLowerCase();
+		const icons = {
+			'jpg': '🖼️', 'jpeg': '🖼️', 'png': '🖼️', 'gif': '🖼️', 'svg': '🖼️',
+			'pdf': '📄', 'doc': '📝', 'docx': '📝', 'txt': '📝',
+			'xls': '📊', 'xlsx': '📊', 'csv': '📊',
+			'mp4': '🎥', 'mov': '🎥', 'avi': '🎥',
+			'mp3': '🎵', 'wav': '🎵', 'flac': '🎵',
+			'zip': '📦', 'rar': '📦', '7z': '📦',
+			'default': '📁'
+		};
+		
+		return icons[extension] || icons['default'];
+	}
+
+	
 	FileUI(files) {
+		let self = this;
 		let fileContainer = document.querySelector(".col-lg-16");
 		const allowedTypes = ["pdf", "xls", "xlsx", "doc", "docx"];
-
-		console.log("inside files UI"+files);
+		console.log("inside files UI",files);
 		
 		files.forEach((file, index) => {
-
 			setTimeout(() => {
 				// Create a NEW element for EACH file
 				let newFileBox = document.createElement("div");
-				// Determine file type
-				const fileExtension = file.file_name.split('.').pop().toLowerCase();
-				if (allowedTypes.includes(fileExtension)) {
+				if (file.file_name.includes('.')) {
+					console.log("files",file.file_name);
+					const fileExtension = file.file_name.split('.').pop().toLowerCase();
+					if (allowedTypes.includes(fileExtension)) {
+						let iconSrc = "";
+						let linkClass = "";
+						switch (fileExtension) {
+							case "xls":
+							case "xlsx":
+							case "csv":
+								iconSrc = "/assets/photos/xls.png";
+								linkClass = "open-spreadsheet";
+								break;
+								
+							case "pdf":
+								iconSrc = "/assets/photos/file.png";
+								linkClass = "open-pdf";
+								break;
+							// case "doc":
+							// case "docx":
+							// 	iconSrc = "/assets/photos/word.png";
+							// 	linkClass = "open-document";
+							// 	break;
 
-					let iconSrc = "";
-					let linkClass = "";
-						
-					switch (fileExtension) {
-						case "xls":
-						case "xlsx":
-						case "csv":
-							iconSrc = "/assets/photos/xls.png";
-							linkClass = "open-spreadsheet";
-							break;
-							
-						case "pdf":
-							iconSrc = "/assets/photos/file.png";
-							linkClass = "open-pdf";
-							break;
-						// case "doc":
-						// case "docx":
-						// 	iconSrc = "/assets/photos/word.png";
-						// 	linkClass = "open-document";
-						// 	break;
-							
-						// default:
-						// 	iconSrc = "/assets/photos/file.png";
-						// 	linkClass = "open-file";
-						// 	break;
-					}
+							// default:
+							// 	iconSrc = "/assets/photos/file.png";
+							// 	linkClass = "open-file";
+							// 	break;
+						}
 
-
-
-
-					newFileBox.className = "file-box";
-					newFileBox.innerHTML = `
+						newFileBox.className = "file-box";
+						newFileBox.innerHTML = `
+							<div class="file">
+								<div class="file-header">
+									<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id="${file.file_id}" data-docname="${file.drive_id}">
+								</div>
+								<a href="#"  class="${linkClass}" data-file-url="${file.file_url}" data-name="${file.file_id}">
+									<span class="corner"></span>
+									<div class="file-body">
+										<img alt="File Icon" style="width: 77px; height: 90px" class="icon" src="${iconSrc}">
+									</div>
+									
+									<div class="file-name">
+										${file.file_name}
+										<br>
+										<small>Just now</small>
+									</div>
+								</a>
+							</div>`;
+					} else {
+						// Image file
+						newFileBox.className = "file-box";
+						newFileBox.innerHTML = `
 						<div class="file">
 							<div class="file-header">
 								<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id="${file.file_id}" data-docname="${file.drive_id}">
 							</div>
-							<a href="#"  class="${linkClass}" data-file-url="${file.file_url}" data-name="${file.file_id}">
+							<a href="#" class="image-preview" data-file-url="${file.file_url}" data-file-id="${file.file_id}" data-drive-id="${file.drive_id}">
 								<span class="corner"></span>
-								 <div class="file-body">
-                                	<img alt="File Icon" style="width: 77px; height: 90px" class="icon" src="${iconSrc}">
-                                </div>
-								
+								<div class="image">
+									<img alt="image" class="img-responsive" src="${file.file_url}">
+								</div>
 								<div class="file-name">
 									${file.file_name}
 									<br>
@@ -1094,28 +1695,33 @@ class MyDrive {
 								</div>
 							</a>
 						</div>`;
-				} else {
-					// Image file
-					newFileBox.className = "file-box";
+					}
+				}else{
+					console.log("folders",file.file_id);
+					newFileBox.classList.add("file-box");
 					newFileBox.innerHTML = `
-					<div class="file">
+						<div class="file">
 						<div class="file-header">
-							<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id="${file.file_id}" data-docname="${file.drive_id}">
+							<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id=${file.file_id} data-docname=${file.drive_id}>
 						</div>
-						<a href="#" class="image-preview" data-file-url="${file.file_url}" data-file-id="${file.file_id}" data-drive-id="${file.drive_id}">
+						<a href="#" class="open-folder" data-folder-name="${file.file_id}">
 							<span class="corner"></span>
-							<div class="image">
-								<img alt="image" class="img-responsive" src="${file.file_url}">
-							</div>
+								<div class="file-body">
+									<svg class="icon" style="width: 71px; height: 75px" aria-hidden="true">
+										<use href="#icon-folder-normal-large"></use>
+									</svg>
+								</div>
 							<div class="file-name">
 								${file.file_name}
 								<br>
-								<small>Just now</small>
+								<small>Just Now</small>
 							</div>
 						</a>
 					</div>`;
-				}
-				
+					// fileDisplayArea.appendChild(newFileBox);
+
+					self.openFolder()
+			 	}
 				// Add fade-in animation
 				newFileBox.style.opacity = '0';
 				newFileBox.style.transform = 'translateY(20px)';
@@ -1907,8 +2513,6 @@ class MyDrive {
 		})
 
 	}
-
-	
 
 	imagePreview() {
 		let self = this
@@ -3324,7 +3928,7 @@ class MyDrive {
 			self.page.set_title(__('Home'));
 			self.current_folder = "Home"; // Reset current folder to Home
 			history.pushState({ folder: "Home" }, "", "/app/my-drive");
-			$('.btn .ellipsis').hide();
+			$('.btn.btn-default ellipsis .ellipsis').hide();
 			// document.querySelector('[data-label="Back"]').style.display = 'none';
 		})
 	}
@@ -3444,7 +4048,8 @@ class MyDrive {
 					console.log("Permissions created",this.permissions)
 
 					let files = r.message.files;
-					let fileDisplayArea = document.querySelector(".col-md-9 .ibox-content .col-lg-16");
+					// let fileDisplayArea = document.querySelector(".col-md-9 .ibox-content .col-lg-16");
+					let fileDisplayArea = document.querySelector(".col-lg-16");
 					fileDisplayArea.innerHTML = "";
 
 					// console.log(files);
@@ -3461,7 +4066,7 @@ class MyDrive {
 								fileElement.innerHTML = `
 									<div class="file">
 									<div class="file-header">
-											<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id=${file.file_id} data-docname=${file.drive_id}>
+										<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id=${file.file_id} data-docname=${file.drive_id}>
 									</div>
 									<a href="#" class="open-folder" data-folder-name="${file.file_id}">
 										<span class="corner"></span>
@@ -3480,29 +4085,28 @@ class MyDrive {
 								`;
 								fileDisplayArea.appendChild(fileElement);
 							} else {
-								if (file.file_type === "XLSX" || file.file_type === "XLS" || file.file_type === "CSV") {
-									let fileElement = document.createElement("div");
-									fileElement.classList.add("file-box");
-									fileElement.innerHTML = `
-											<div class="file">
-												<div class="file-header">
-														<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id=${file.file_id} data-docname=${file.drive_id}>
-												</div>
-												<a href="#" class="open-spreadsheet" data-file-url="${file.file_url}" data-file-id=${file.file_id}>
-													<span class="corner"></span>
-													
-													<div class="file-body">
-														<img alt="File Icon" style="width: 75px; height: 90px" class="icon" src="/assets/photos/xls.png">
-													</div>
-													<div class="file-name">
-														${file.file_name}
-														<br>
-														<small>${file.creation}</small>
-													</div>
-												</a>
+							if (file.file_type === "XLSX" || file.file_type === "XLS" || file.file_type === "CSV") {
+								let fileElement = document.createElement("div");
+								fileElement.classList.add("file-box");
+								fileElement.innerHTML = `
+									<div class="file">
+										<div class="file-header">
+												<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id=${file.file_id} data-docname=${file.drive_id}>
+										</div>
+										<a href="#" class="open-spreadsheet" data-file-url="${file.file_url}" data-file-id=${file.file_id}>
+											<span class="corner"></span>
+											
+											<div class="file-body">
+												<img alt="File Icon" style="width: 75px; height: 90px" class="icon" src="/assets/photos/xls.png">
 											</div>
-										`;
-									fileDisplayArea.appendChild(fileElement);
+											<div class="file-name">
+												${file.file_name}
+												<br>
+												<small>${file.creation}</small>
+											</div>
+										</a>
+									</div>`;
+								fileDisplayArea.appendChild(fileElement);
 								} else if (file.file_type === "PDF") {
 									let fileElement = document.createElement("div");
 									fileElement.classList.add("file-box");
@@ -3566,7 +4170,6 @@ class MyDrive {
 			});
 		}
 	}
-
 
 	Back() {
 		let self = this;

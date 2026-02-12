@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\":\"97GERZ85rh\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Gallery\",\"col\":3}},{\"id\":\"FlUa8aJIVL\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Photos\",\"col\":3}},{\"id\":\"Ol7eMVGDI6\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"People\",\"col\":3}},{\"id\":\"P3oLcRlBL_\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Persons\",\"col\":3}},{\"id\":\"Tx_ZiE9rx9\",\"type\":\"card\",\"data\":{\"card_name\":\"Permissions\",\"col\":3}},{\"id\":\"D3FYCRkTZh\",\"type\":\"card\",\"data\":{\"card_name\":\"Logs\",\"col\":3}}]",
+ "content": "[{\"id\":\"ju6mvOKoqZ\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Document Manager</b></span>\",\"col\":12}},{\"id\":\"97GERZ85rh\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"My Drive\",\"col\":3}},{\"id\":\"-f2Oko8RMu\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Activity Log\",\"col\":3}},{\"id\":\"V94HzHacvO\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Permission Manager\",\"col\":3}},{\"id\":\"K0FoXmDNG4\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"D3FYCRkTZh\",\"type\":\"card\",\"data\":{\"card_name\":\"Logs\",\"col\":3}},{\"id\":\"Tx_ZiE9rx9\",\"type\":\"card\",\"data\":{\"card_name\":\"System\",\"col\":3}}]",
  "creation": "2020-05-23 19:38:03.299510",
  "custom_blocks": [],
  "docstatus": 0,
@@ -14,8 +14,37 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Permissions",
+   "label": "Logs",
    "link_count": 2,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Shared files",
+   "link_count": 0,
+   "link_to": "Shared Files",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Scrap Book",
+   "link_count": 0,
+   "link_to": "Scrap Book",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "System",
+   "link_count": 5,
    "link_type": "DocType",
    "onboard": 0,
    "type": "Card Break"
@@ -43,66 +72,67 @@
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Logs",
-   "link_count": 1,
+   "label": "Photo",
+   "link_count": 0,
+   "link_to": "Photo",
    "link_type": "DocType",
    "onboard": 0,
-   "type": "Card Break"
+   "type": "Link"
   },
   {
    "hidden": 0,
    "is_query_report": 0,
-   "label": "Shared files",
+   "label": "ROI",
    "link_count": 0,
-   "link_to": "Shared Files",
+   "link_to": "ROI",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Add Person",
+   "link_count": 0,
+   "link_to": "Person",
    "link_type": "DocType",
    "onboard": 0,
    "type": "Link"
   }
  ],
- "modified": "2025-07-28 11:57:00.513051",
+ "modified": "2026-01-21 23:47:53.101017",
  "modified_by": "Administrator",
  "module": "Photos",
  "name": "Photos",
  "number_cards": [],
  "owner": "Administrator",
+ "parent_page": "",
  "public": 1,
  "quick_lists": [],
  "roles": [],
- "sequence_id": 0.0,
+ "sequence_id": 2.0,
  "shortcuts": [
   {
-   "color": "Green",
+   "color": "Grey",
    "doc_view": "List",
-   "format": "{} Total",
-   "label": "Persons",
-   "link_to": "Person",
-   "stats_filter": "[[\"Person\",\"user\",\"like\",\"%@%\",false]]",
-   "type": "DocType"
+   "icon": "es-icon icon-sm",
+   "label": "My Drive",
+   "link_to": "my-drive-v2",
+   "type": "Page"
   },
   {
-   "color": "Blue",
+   "color": "Grey",
    "doc_view": "List",
-   "format": "{} Matched Faces",
-   "label": "People",
-   "link_to": "ROI",
-   "stats_filter": "[[\"ROI\",\"person\",\"is\",\"set\",false]]",
-   "type": "DocType"
-  },
-  {
-   "color": "Orange",
-   "doc_view": "List",
-   "format": "{} Processed",
-   "label": "Photos",
-   "link_to": "Photo",
-   "stats_filter": "[[\"Photo\",\"is_processed\",\"=\",1,false]]",
+   "label": "Activity Log",
+   "link_to": "Activity Log",
+   "stats_filter": "[]",
    "type": "DocType"
   },
   {
    "color": "Grey",
    "doc_view": "List",
-   "label": "Gallery",
-   "link_to": "my-drive",
+   "label": "Permission Manager",
+   "link_to": "permission-manager",
    "type": "Page"
   }
  ],
