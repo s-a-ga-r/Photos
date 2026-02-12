@@ -1,39 +1,73 @@
 // Better approach - don't override, just intercept
 
 
-frappe.router.on('change', () => {
-    const route = frappe.get_route_str();
-    var from_rout = false
+// frappe.router.on('change', () => {
+//     const route = frappe.get_route_str();
+//     console.log("route",route);
+    
+//     var from_rout = false
 
-    if (route === "Workspaces/Document Management") {
-        frappe.set_route("my-drive-v2");
-        from_rout = true
-    }
+//     if (route === "Workspaces/Document Management") {
+//         frappe.set_route("my-drive-v2");
 
-    if (route !== "Workspaces/Document Management") {
-        // frappe.set_route("my-drive-v2");
+//         from_rout = true
+//         console.log("route is ",frappe.get_route_str());
+        
+//     }
 
-        if(from_rout){
+//     if (route !== "Workspaces/Document Management") {
+//         // frappe.set_route("my-drive-v2");
 
-            console.log("get called");
+//         if(from_rout){
 
-            // frappe.desk.sidebar.make();
+//             console.log("get called");
 
-            window.location.reload();
+//             // frappe.desk.sidebar.make();
 
-            from_rout =  false
+//             window.location.reload();
+
+//             from_rout =  false
             
 
-        }
+//         }
         
+//     }
+
+// });
+
+
+
+frappe.provide('frappe.router');
+
+// 🎯 Track the previous route
+let previousRoute = null;
+
+frappe.router.on('change', () => {
+    const route = frappe.get_route_str();
+
+    console.log("get_route_str",route);
+    
+    
+    // Redirect workspace to custom page
+    if (route === "Workspaces/Document Management") {
+        frappe.set_route("my-drive-v2");
+        previousRoute = route;
+        console.log("the route :",frappe.get_route_str());
+        return;
+
+    }
+
+    if (route !=="Workspaces/Document Management"){
+
+        if (previousRoute =="my-drive-v2"){
+            console.log("route",route);
+            window.location.reload();
+            return;
+        
+        }
     }
 
 });
-
-
-
-
-
 
 
 
