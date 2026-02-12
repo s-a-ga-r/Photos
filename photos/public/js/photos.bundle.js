@@ -43,30 +43,32 @@ frappe.provide('frappe.router');
 let previousRoute = null;
 
 frappe.router.on('change', () => {
-    const route = frappe.get_route_str();
+    const currentRoute = frappe.get_route_str();
 
-    console.log("get_route_str",route);
+    console.log("get_route_str",currentRoute);
     
     
     // Redirect workspace to custom page
-    if (route === "Workspaces/Document Management") {
+    if (currentRoute === "Workspaces/Document Management") {
         frappe.set_route("my-drive-v2");
-        previousRoute = route;
+        previousRoute = currentRoute;
         console.log("the route :",frappe.get_route_str());
         return;
 
     }
 
-    if (route !=="Workspaces/Document Management"){
+    if (currentRoute !=="Workspaces/Document Management"){
 
         if (previousRoute =="my-drive-v2"){
-            console.log("route",route);
+            console.log("currentRoute",currentRoute);
             window.location.reload();
             return;
         
         }
-    }
-
+    }    
+    
+    // Update previous route
+    previousRoute = currentRoute;
 });
 
 
