@@ -7,6 +7,7 @@ import frappe
 
 if TYPE_CHECKING:
     from frappe.core.doctype.file.file import File
+    from frappe.core.doctype.user.user import User
 
     from photos.photos.doctype.photo.photo import Photo
 
@@ -116,7 +117,6 @@ def process_file(file: "File", event: str) -> "Photo":
     if not file.file_url.startswith("/files/my-drive/"):
         return
     
-
     photo = frappe.new_doc("Photo")
     photo.photo = file.name
 
@@ -124,15 +124,11 @@ def process_file(file: "File", event: str) -> "Photo":
 
     return photo.save()
 
-
-
-
 # Added by Sagar Patil
 import os
 from frappe.exceptions import LinkValidationError
 
 def create_folder(folder:"File",event:str):
-
     if event != "after_insert":
         raise NotImplementedError
 
@@ -156,3 +152,21 @@ def create_folder(folder:"File",event:str):
     except Exception as e:
         # Catch any other unexpected error
         frappe.msgprint(f"Unexpected error: {str(e)}")
+
+
+
+def create_user(user:"User",event:str):
+    if event != "after_insert":
+        raise NotImplementedError
+    
+    try:
+        drv_access = frappe.new_doc("Drive Access")
+        drv_access.user = user.email
+        drv_access.view_only = 1
+        frappe.msgprint(str("{0} Created Folder Successfully".format(user.email)))
+
+        return drv_access.save()
+    except LinkValidationError:
+        frappe.msgprint("Parent folder not found. Cannot create Drive Manager entry.")
+    
+        

@@ -47,7 +47,6 @@ frappe.router.on('change', () => {
 
     console.log("get_route_str",currentRoute);
     
-    
     // Redirect workspace to custom page
     if (currentRoute === "Workspaces/Document Management") {
         frappe.set_route("my-drive-v2");

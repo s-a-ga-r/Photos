@@ -106,6 +106,11 @@ doc_events = {
                 "photos.utils.process_file",
                 "photos.utils.create_folder"
             ]
+        },
+     "User": {
+            "after_insert": [
+                "photos.utils.create_user"
+            ]
         }
     # "File": {"on_update": "photos.utils.handle_file_update"}
 }

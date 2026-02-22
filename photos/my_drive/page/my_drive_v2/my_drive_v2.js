@@ -81,26 +81,29 @@ const MyDriveV3 = {
 
 	},
 
-	driveAccess() {
+	async driveAccess() {
 		if (this.drive_access.all == 1) {
 			// console.log("inside all drive access");
-			
+			await frappe.xcall("photos.file_utils.create_user_folder", {
+				user: frappe.session.user
+			});
+
 			this.uploadFile()
 			this.uploadFolder()
-			this.uploadLarge()
+			// this.uploadLarge()
 			this.newFolder()
 			this.render_template(); // For checking i added here this line today Nov 17 at 6 pm
 		} else if (this.drive_access.upload_only == 1) {
-			
-			
 			this.uploadFile()
 			this.uploadFolder()
-			this.uploadLarge()
+			// this.uploadLarge()
 			this.render_template();   // For checking i added here this line today Nov 17 at 6 pm
-		} else {
-			console.log("User Dont Have Drive Access");
+		}else if(this.drive_access.view_only == 1){
+			this.render_template();
 
+		}else {
 			frappe.msgprint("Don't Have Access ! Please Contact Admin")
+			// console.log("User Dont Have Drive Access");
 			return
 		}
 	},
@@ -1105,90 +1108,94 @@ const MyDriveV3 = {
 		console.log("Handled the Permissions:", self.permissions)
 	},
 
-	uploadFile() {
-		let self = this
-		this.page.add_action_item(__('<i class="fa fa-file"></i> Upload File'), function () {
-			var file_input = document.createElement("input");
-			console.log("file_input",file_input);
-			file_input.type = "file";
-			file_input.accept = ".pdf, .xls, .xlsx, .doc, .docx, .png, .jpg, .jpeg, .gif";
-			console.log("current folder = ", self.current_folder);
+	// uploadFile() {
+	// 	let self = this
+	// 	this.page.add_action_item(__('<i class="fa fa-file"></i> Upload File'), function () {
+	// 		var file_input = document.createElement("input");
+	// 		console.log("file_input",file_input);
+	// 		file_input.type = "file";
+	// 		file_input.accept = ".pdf, .xls, .xlsx, .doc, .docx, .png, .jpg, .jpeg, .gif";
+	// 		console.log("current folder = ", self.current_folder);
 
-			file_input.onchange = function () {
-				let file = file_input.files[0];
-				let folder = self.current_folder;
+	// 		file_input.onchange = function () {
+	// 			let file = file_input.files[0];
+	// 			let folder = self.current_folder;
 
-				console.log("file",file);
-				console.log("folder",folder);
+	// 			console.log("console file",file);
+	// 			console.log("console folder",folder);
 
-				const MAX_SIZE = 4 * 1024 * 1024; // 4 MB in bytes
-				if (file.size > MAX_SIZE) {
-					console.log("file's size is max");
+	// 			const MAX_SIZE = 4 * 1024 * 1024; // 4 MB in bytes
+	// 			if (file.size > MAX_SIZE) {
+	// 				console.log("file's size is max");
 					
-					self.uploadBigFile(file,folder)
-					return
-				}
+	// 				self.uploadBigFile(file,folder)
+	// 				return
+	// 			}
 
-				console.log("file's size is not more than 4 mb");
+	// 			console.log("file's size is not more than 4 mb and it is",file.size);
 
 				
-				// console.log("Uploading file to ...", folderName);
-				// console.table("file",file);
+	// 			// console.log("Uploading file to ...", folderName);
+	// 			// console.table("file",file);
 
-				var xhr = new XMLHttpRequest();
-				// Update the endpoint to your custom upload handler
-				xhr.open("POST", "/api/method/photos.my_drive.page.my_drive_v2.my_drive_v2.upload_file", true);
-				xhr.setRequestHeader("Accept", "application/json");
-				xhr.setRequestHeader("X-Frappe-CSRF-Token", frappe.csrf_token);
+	// 			var xhr = new XMLHttpRequest();
+	// 			// Update the endpoint to your custom upload handler
+	// 			xhr.open("POST", "/api/method/photos.my_drive.page.my_drive_v2.my_drive_v2.upload_file", true);
+	// 			xhr.setRequestHeader("Accept", "application/json");
+	// 			xhr.setRequestHeader("X-Frappe-CSRF-Token", frappe.csrf_token);
+	// 			xhr.setRequestHeader("Expect", "");
 
-				let form_data = new FormData();
-				form_data.append("file", file, file.name);
-				form_data.append("folder", folder);
+	// 			let form_data = new FormData();
+	// 			form_data.append("file", file, file);
+	// 			form_data.append("folder", folder);
 
-				xhr.onload = function () {
-					if (xhr.status === 200) {
-						console.log("File uploaded successfully:", xhr.responseText);
-						let response = JSON.parse(xhr.responseText);
-						// Add permissions
+	// 			xhr.onload = function () {
+	// 				if (xhr.status === 200) {
+	// 					console.log("File uploaded successfully:", xhr.responseText);
+	// 					let response = JSON.parse(xhr.responseText);
+	// 					// Add permissions
 
-						if (response.message.success) {
-							let files = response.message.uploaded_files
-							let folder = response.message.folder
-							self.handlePermissions(files)
-							// console.log("uploading files",response.message.uploaded_files);
-							// console.log(`response files :${files}`);
-							// console.log(`response folders : ${folder}`);
-							self.makeURL(folder)
-							self.BackButton()
-							self.fileGrid()
-							self.FileUI(files)
-						} else {
-							frappe.msgprint(__("File uploaded successfully! {0} files uploaded.", [response.message.total_uploaded]));
-						}
+	// 					if (response.message.success) {
+	// 						let files = response.message.uploaded_files
+	// 						let folder = response.message.folder
+	// 						self.handlePermissions(files)
+	// 						// console.log("uploading files",response.message.uploaded_files);
+	// 						// console.log(`response files :${files}`);
+	// 						// console.log(`response folders : ${folder}`);
+	// 						self.makeURL(folder)
+	// 						self.BackButton()
+	// 						self.fileGrid()
+	// 						self.FileUI(files)
+	// 					} else {
+	// 						frappe.msgprint(__("File uploaded successfully! {0} files uploaded.", [response.message.total_uploaded]));
+	// 					}
 
-					} else {
-						console.error("Upload failed:", xhr.statusText);
-						frappe.msgprint(__("Error uploading file: {0}", [xhr.statusText]));
-					}
-				};
+	// 				} else {
+	// 					console.error("Upload failed:", xhr.statusText);
+	// 					frappe.throw(__("Error uploading file: {0}", [xhr.statusText]));
+	// 				}
+	// 			};
 
-				xhr.onerror = function () {
-					console.error("Upload failed:", xhr.statusText);
-					frappe.msgprint(__("Error uploading file"));
-				};
+	// 			xhr.onerror = function () {
+	// 				console.error("Upload failed:", xhr.statusText);
+	// 				frappe.msgprint(__("Error uploading file"));
+	// 			};
 
-				xhr.send(form_data);
-				console.log("form data send to server", form_data);
-			};
+	// 			xhr.send(form_data);
+	// 			console.log("form data send to server", form_data);
+	// 		};
 
-			file_input.click();
-		});
-	},
+	// 		file_input.click();
+	// 	});
+	// },
 
 
-	async uploadLarge() {
+	// this below function was uploadLarge() => uploadFile because of error 
+	
+	uploadFile() {
 		let self = this
-		this.page.add_action_item(__('<i class="fa fa-file-o"></i> Upload Big File'), async function () {
+		// button name was Upload Big File Upload File=>
+		this.page.add_action_item(__('<i class="fa fa-file"></i> Upload File'), async function () {
 			try {
 				const input = document.createElement("input");
 				input.type = "file";

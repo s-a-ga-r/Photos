@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING
 import os
 import json
 import frappe
+from photos.my_drive.doctype.docman_audit_log.docman_audit_log import make_audit_dict,create_audit_log
+
 
 if TYPE_CHECKING:
     from frappe.core.doctype.file.file import File
@@ -34,6 +36,15 @@ def download(file_id):
 
     if not os.path.exists(file_path):
         frappe.throw("File not found on server.")
+
+    audit_log = {
+        "file_id" :file_id,
+        "drive_id": frappe.db.get_value("Drive Manager",{"attached_to_name":file_id},"name"),
+        "session_user": frappe.session.user,
+        "opration":"Download"
+    }
+    audit_log = make_audit_dict(audit_log)
+
 
     # Prepare response for download
     frappe.local.response.filename = file_doc.file_name

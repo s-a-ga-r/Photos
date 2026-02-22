@@ -14,6 +14,8 @@ from frappe.utils import now
 from photos.my_drive.doctype.docman_audit_log.docman_audit_log import make_audit_dict,create_audit_log
 
 
+
+
 @frappe.whitelist()
 def render_template(owner,folder,limit_start,limit_page_length):    
     drive_access = frappe.get_value("Drive Access", {"user": owner},["view_only", "upload_only","all"], as_dict=True) or {}
@@ -128,7 +130,7 @@ def render_template(owner,folder,limit_start,limit_page_length):
         "opration":"View",
         "session_user": frappe.session.user,
     }
-    audit_log= make_audit_dict(audt_log)
+    audit_log = make_audit_dict(audt_log)
 
     create_audit_log(audit_log)
 
@@ -720,8 +722,10 @@ def get_shared_files(user, limit_start=0, limit_page_length=20):
         limit_page_length=limit_page_length
     )
 
-    shared_data = []
+    if not shared_list:
+        return
 
+    shared_data = []
     for i in shared_list:
 
         doc = frappe.get_doc("Drive Manager", i.drive_id)
@@ -1032,8 +1036,8 @@ def get_tags(file_id):
                     print("Not Found")
         else:
             print("Photo document not created yet")
-            
         return persons
+
 
 @frappe.whitelist()
 def get_person(file_id):
@@ -1251,6 +1255,7 @@ def delete_bulk_items(bulk_files):
                     frappe.db.delete("ROI", roi)
                 if photo and frappe.db.exists("Photo", drive_id):
                     frappe.db.delete("Photo", photo)
+                    
                 frappe.delete_doc("File", file_id, force=True)
         
             # Delete File
@@ -1270,10 +1275,9 @@ def delete_bulk_items(bulk_files):
             "filename":filename
         }
 
-        audit_log = make_audit_dict(audit_log)
-
         if status == "Success":
             # make_audit_dict()
+            audit_log = make_audit_dict(audit_log)
             create_audit_log(audit_log)
             frappe.cache.set_value("file_id",file_id)
             frappe.cache.set_value("drive_id",drive_id)
@@ -1468,7 +1472,8 @@ def upload_file():
         # Create My Drive directory if it doesn't exist
         site_path = get_site_path()
         print("site_path", site_path)   #./final.clubs
-        my_drive_path = os.path.join(site_path, 'public', 'files', 'my-drive')
+        username = frappe.db.get_value("User",frappe.session.user,"username")
+        my_drive_path = os.path.join(site_path, 'public', 'files', 'my-drive',username)
         print("my_drive_path", my_drive_path) # ./final.clubs/public/files/my-drive
 
         if not os.path.exists(my_drive_path):
@@ -1490,7 +1495,7 @@ def upload_file():
         
         print("target_folder_path", target_folder_path) #./final.clubs/public/files/my-drive
         
-        filename = file.filename
+        filename = file.name
         file_path = os.path.join(target_folder_path, filename)
         
         counter = 1
@@ -1619,9 +1624,7 @@ def upload_nested_folder_to_my_drive():
         # Get the base my-drive physical path
         site_path = get_site_path()
         my_drive_path = os.path.join(site_path, 'public', 'files', 'my-drive')
-
         print("created site_path",my_drive_path)
-        
         # Ensure my-drive directory exists
         if not os.path.exists(my_drive_path):
             os.makedirs(my_drive_path)
@@ -1632,7 +1635,6 @@ def upload_nested_folder_to_my_drive():
             folder_key = f"folder_to_create_{i}"
             folder_path = frappe.form_dict.get(folder_key, '')
             print(f'Folder key {folder_key} : folder_path {folder_path}')
-
             if folder_path:
                 folders_to_create.append(folder_path)
         
@@ -1910,11 +1912,6 @@ def format_last_login(login_time):
 
 
 
-
-
-
-
-
 @frappe.whitelist()
 def upload_file_chunk(
         file_name,
@@ -1947,9 +1944,17 @@ def upload_file_chunk(
 
 def finalize_upload(upload_id, file_name, total_chunks, folder):
     site_path = get_site_path()
+
+    username = frappe.db.get_value("User",frappe.session.user,"username")
+    if username:
+        user_folder = username
+    else:
+        user_folder = ""
+
     my_drive_path = os.path.join(
-        site_path, "public", "files", "my-drive"
+        site_path, "public", "files", "my-drive",user_folder
     )
+    
     os.makedirs(my_drive_path, exist_ok=True)
 
     target_folder_path = my_drive_path

@@ -3,6 +3,7 @@
 
 import frappe
 from frappe.model.document import Document
+from frappe import _
 
 
 class DocManAuditLog(Document):
@@ -32,16 +33,40 @@ def make_audit_dict(log):
         audit_log["session_user"]=log['session_user']
         audit_log["opration"] = log['opration']
         return audit_log
-    elif log['opration'] == "Delete":
+    elif log['opration'] == "Download":
         audit_log = {}
-        
-        print("opration is Delete and file name is :",log['filename'])
+        print("Operation is Upload file_id",log['file_id'])
+        # filename = frappe.get_value("File",log['file_id'],"file_name")
+        print("opration is Upload and file name is :",log['filename'])
         audit_log["title"] = f'{log['session_user']} {log['opration']}ed {log['filename']} in Document Management'
         audit_log["file_id"] = log['file_id']
         audit_log["drive_id"] = log['drive_id']
         audit_log["session_user"]=log['session_user']
         audit_log["opration"] = log['opration']
         return audit_log
+
+    elif log['opration'] == "Delete":
+        audit_log = {}
+        
+        print("opration is Delete and file name is :",log['filename'])
+        audit_log["title"] = f'{log['session_user']} {log['opration']}d {log['filename']} in Document Management'
+        audit_log["file_id"] = log['file_id']
+        audit_log["drive_id"] = log['drive_id']
+        audit_log["session_user"]=log['session_user']
+        audit_log["opration"] = log['opration']
+        return audit_log
+    
+    elif log['opration'] == "Restore":
+        audit_log = {}
+        print("opration is Restore and file name is :",log['filename'])
+        audit_log["title"] = f'{log['session_user']} {log['opration']}ed {log['filename']} in Document Management'
+        audit_log["file_id"] = log['file_id']
+        audit_log["drive_id"] = log['drive_id']
+        audit_log["session_user"]=log['session_user']
+        audit_log["opration"] = log['opration']
+        return audit_log
+    
+
     else:
         frappe.throw(_("Opration error the opration is :",log['opration']))
 
@@ -105,5 +130,4 @@ def create_audit_log(audt_log):
             "operation_on":frappe.utils.now()
         })
         dm.flags.ignore_permissions = True
-        dm.insert() 
-
+        dm.insert()

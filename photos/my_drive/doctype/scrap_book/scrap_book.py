@@ -24,8 +24,6 @@ class ScrapBook(Document):
 def restore(doc_name, alert=True):
 	# frappe.msgprint(str(doc_name))
 	scrp_doc = frappe.get_doc("Scrap Book",doc_name)
-	
-		
 	if not os.path.exists(scrp_doc.scrap_file_url):
 		frappe.throw("File Not Exist")
 
@@ -41,8 +39,21 @@ def restore(doc_name, alert=True):
 				name = frappe.get_value("Deleted Document",{"deleted_name":scrp_doc.deleted_drive_id},"name")
 				new_drive_id = restore_drive_document(name,new_file_id,scrp_doc.original_file_url)
 
-			frappe.msgprint(_("File : {0}, Drive : {1} Restored").format(new_file_id,new_drive_id))
-			
+			# frappe.msgprint(_("File : {0}, Drive : {1} Restored").format(new_file_id,new_drive_id))
+
+			# audt_log = {
+			# 	"opration":"Restore",
+			# 	"session_user": frappe.session.user,
+			# 	"drive_id":name,
+			# 	"file_id":new_file_id,
+			# 	"filename":frappe.db.get_value("File",new_file_id,"file_name")
+			# }
+
+			# audit_log = make_audit_dict(audt_log)
+
+
+			# create_audit_log(audit_log)
+
 			scrp_doc.restored = 1
 			scrp_doc.status = "Restored"
 			scrp_doc.db_update()
@@ -127,9 +138,12 @@ def restore_drive_document(name,new_file_id,directory,alert=True):
 
 	create_audit_log(audit_log)
 
+
 	deleted.new_name = doc.name
 	deleted.restored = 1
 	deleted.db_update()
+
+	frappe.msgprint(_("File : {0} Restored Successfully").format(filename))
 
 	if alert:
 		return doc.name

@@ -50,18 +50,7 @@ frappe.ui.form.on("Scrap Book", {
                 );
 
             })
-        }
 
-        
-
-
-
-        if (frm.doc.status != "Deleted"){
-
-            // Restore File
-           
-
-            // Download File
             frm.add_custom_button(__('Download'), function(){	
 
                 frappe.call({
@@ -90,9 +79,45 @@ frappe.ui.form.on("Scrap Book", {
                 // window.open(`/api/method/photos.download.download_scrap_file?scrap_id=${frm.doc.name}`);
             })
 
-            // Delete File
-            
         }
+
+        // if (frm.doc.status != "Deleted"){
+
+        //     // Restore File
+           
+
+        //     // Download File
+        //     frm.add_custom_button(__('Download'), function(){	
+
+        //         frappe.call({
+        //             method: "photos.download.can_download",
+        //             args: {
+        //                 scrap_id: frm.doc.name
+        //             },
+        //             callback(r) {
+        //                 if (!r.message) {
+        //                     frappe.msgprint({
+        //                         title: __("Error"),
+        //                         message: __("File not found on server."),
+        //                         indicator: "red"
+        //                     });
+        //                     return;
+        //                 }
+
+        //                 // SAFE to download
+        //                 window.open(
+        //                     `/api/method/photos.download.download_scrap_file?scrap_id=${frm.doc.name}`
+        //                 );
+        //             }
+        //         });
+
+        //         // before updated only this line 
+        //         // window.open(`/api/method/photos.download.download_scrap_file?scrap_id=${frm.doc.name}`);
+        //     })
+
+        //     // Delete File
+            
+        // }
 
 	},
 });
