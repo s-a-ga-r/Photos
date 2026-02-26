@@ -49,7 +49,7 @@ const MyDriveV3 = {
 		this.permissions = []
 		this.current_folder = "Home"
 		this.folders_array = ["Home"]
-		console.log(frappe.session.user, "user");
+		// console.log(frappe.session.user, "user");
 		frappe.db.get_value("Drive Access", { "user": frappe.session.user }, ['view_only', 'upload_only', 'all'])
 			.then(r => {
 
@@ -57,7 +57,7 @@ const MyDriveV3 = {
 					this.drive_access = {"all":1,"upload_only":0,"view_only":0}
 					this.driveAccess()
 				}else{
-					console.log("Drive Access", r.message);
+					// console.log("Drive Access", r.message);
 					this.drive_access = r.message
 					this.driveAccess()
 				}
@@ -108,20 +108,18 @@ const MyDriveV3 = {
 		}
 	},
 
-
 	render_template() {
 		// this.page.set_title(__(this.current_folder));
 		if (window.location.pathname !== "/app/my-drive-v2") {
 			console.log("window.location was ", window.location.pathname);
 			console.log("checking current folder ,",this.current_folder);
-			history.pushState({ folder: this.current_folder }, "", "/app/my-drive-v2");
+			history.pushState({ folder: this.current_folder}, "", "/app/my-drive-v2");
 			this.page.set_title(__(this.current_folder));
 			$('.custom-actions .ellipsis').hide();
 		}
 
 		// this.folders_array.push(this.current_folder)
 		
-
 		this.permissions.length = 0
 
 		console.log(this.current_folder)
@@ -129,36 +127,34 @@ const MyDriveV3 = {
 		let limit_page_length = 20
 		frappe.call({
 			method: "photos.my_drive.page.my_drive_v2.my_drive_v2.render_template",
-			args: { 
+			args: {
 				owner: frappe.session.user,
 				folder: this.current_folder,
 				limit_start: limit_start,
 				limit_page_length: limit_page_length
-
 			},
 			callback: (r) => {
 				if (r.message) {
-					console.log("renderTemplate responce", r.message);
+					// console.log("renderTemplate responce", r.message);
 
 					this.handlePermissions(r.message.files) // globel permissions
 
 					$(".file-view").remove()
 					$(".layout-side-section").remove()
 
-
 					this.tags = r.message.tags || {};
-					console.log("renderTemplate this.permissions", this.permissions);
+					// console.log("renderTemplate this.permissions", this.permissions);
 					let filess = r.message.files.filter(file => !file.is_folder);
 					let folders = r.message.files.filter(file => file.is_folder);
 
-					console.log("files", filess);
-					console.log("folders", folders);
+					// console.log("files", filess);
+					// console.log("folders", folders);
 					let context = {
 						"user_details": r.message.user_details,
 						"files": filess,
 						"folders": folders,
 					}
-					console.log("renderTemplate ends here...");
+					// console.log("renderTemplate ends here...");
 
 					// $("#page-my-drive-v3").remove()
 
@@ -178,7 +174,9 @@ const MyDriveV3 = {
 					this.sidebar_button();
 
 					if (filess.length === 0 && folders.length === 0) {
+						console.log("No files means upload button should be visible and working");
 						emptyState();
+						this.uploadButton()
 						return;
 					}
 					if(r.message.total_notification > 0){
@@ -613,13 +611,11 @@ const MyDriveV3 = {
 
 											if ($(".result.file-grid-view .file-grid.file").length === 0) {
 												console.log("in if if");
-
 												console.log(".file-grid has no files OR does not exist");
 												// emptyState()
-												// self.upload_button()
+												// self.uploadButton()
 											} else {
 												console.log("else part file still there");
-
 												console.log($(".result.file-grid-view .file-grid"));
 											}
 										} else {
@@ -644,10 +640,6 @@ const MyDriveV3 = {
 										const $pdffileBox = $(`.open-pdf[data-drive-id="${item.file_id}"]`).closest(".file");
 										const $xlsxfileBox = $(`.open-spreadsheet[data-drive-id="${item.drive_id}"]`).closest(".file");
 										const $videofileBox = $(`.video-preview[data-drive-id="${item.drive_id}"]`).closest(".file");
-
-
-
-
 
 										$imagefileBox.fadeOut(150, function () {
 											$(this).remove();
@@ -675,7 +667,7 @@ const MyDriveV3 = {
 									if ($(".result.file-grid-view").length && $(".result.file-grid-view .file-grid .file").length === 0) {
 										console.log(".file-grid has no files OR does not exist");
 										emptyState()
-										self.upload_button()
+										self.uploadButton()
 									}
 
 
@@ -1082,7 +1074,7 @@ const MyDriveV3 = {
 
 	handlePermissions(files) {
 
-		console.log("Handling permission",files);
+		// console.log("Handling permission",files);
 		
 		let self = this
 		// this.permissions.length = 0
@@ -1105,7 +1097,7 @@ const MyDriveV3 = {
 			
 		});
 
-		console.log("Handled the Permissions:", self.permissions)
+		// console.log("Handled the Permissions:", self.permissions)
 	},
 
 	// uploadFile() {
@@ -1215,6 +1207,7 @@ const MyDriveV3 = {
 						);
 
 						let formData = new FormData();
+						// formData.append("file", chunk);
 						formData.append("file", chunk);
 						formData.append("file_name", file.name);
 						formData.append("chunk_index", i);
@@ -1379,7 +1372,7 @@ const MyDriveV3 = {
 
 	
 
-	upload_button() {
+	uploadButton() {
 		console.log("upload button called")
 		let self = this
 		$(document).off("click", "#upload-file").on("click", "#upload-file", function (event) {
@@ -1398,7 +1391,7 @@ const MyDriveV3 = {
 
 				var xhr = new XMLHttpRequest();
 				// Update the endpoint to your custom upload handler
-				xhr.open("POST", "/api/method/photos.my_drive.page.my_drive.my_drive.upload_file_to_my_drive", true);
+				xhr.open("POST", "/api/method/photos.file_utils.upload_file_to_my_drive", true);
 				xhr.setRequestHeader("Accept", "application/json");
 				xhr.setRequestHeader("X-Frappe-CSRF-Token", frappe.csrf_token);
 
@@ -2313,7 +2306,7 @@ const MyDriveV3 = {
 							<div class="file-name">
 								${file.file_name}
 								<br>
-								<small>${file.creation}</small>
+								<small>Just now</small>
 							</div>
 						</a>
 					`;
@@ -2641,7 +2634,7 @@ const MyDriveV3 = {
 
 					if (files.length === 0) {
 						emptyState()
-						self.upload_button()
+						self.uploadButton()
 						// fileDisplayArea.innerHTML = `<p class="center">This folder is empty. Upload files here.</p>`;
 					} else {
 						files.forEach(file => {
@@ -3381,7 +3374,7 @@ const MyDriveV3 = {
 						if (files.length === 0) {
 							$(".frappe-list .no-result").remove();
 							emptyState()
-							self.upload_button()
+							self.uploadButton()
 							// fileDisplayArea.innerHTML = `<p class="center">This folder is empty. Upload files here.</p>`;
 						} else {
 
@@ -3879,7 +3872,7 @@ const MyDriveV3 = {
 
 	imagePreview() {
 		let self = this
-		console.log("Permissions before click image preview", this.permissions);
+		// console.log("Permissions before click image preview", this.permissions);
 		$(document).off("click", ".image-preview").on("click", ".image-preview", async function (event) {
 			event.preventDefault();
 			let file_url = $(this).data("file-url");

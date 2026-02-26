@@ -4,7 +4,6 @@
   var previousRoute = null;
   frappe.router.on("change", () => {
     const currentRoute = frappe.get_route_str();
-    console.log("get_route_str", currentRoute);
     if (currentRoute === "Workspaces/Document Management") {
       frappe.set_route("my-drive-v2");
       previousRoute = currentRoute;
@@ -13,7 +12,6 @@
     }
     if (currentRoute !== "Workspaces/Document Management") {
       if (previousRoute == "my-drive-v2") {
-        console.log("currentRoute", currentRoute);
         window.location.reload();
         return;
       }
@@ -21,4 +19,4 @@
     previousRoute = currentRoute;
   });
 })();
-//# sourceMappingURL=photos.bundle.R3AQTVC7.js.map
+//# sourceMappingURL=photos.bundle.SGH44742.js.map

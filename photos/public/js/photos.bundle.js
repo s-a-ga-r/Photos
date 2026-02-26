@@ -45,7 +45,7 @@ let previousRoute = null;
 frappe.router.on('change', () => {
     const currentRoute = frappe.get_route_str();
 
-    console.log("get_route_str",currentRoute);
+    // console.log("get_route_str",currentRoute);
     
     // Redirect workspace to custom page
     if (currentRoute === "Workspaces/Document Management") {
@@ -59,7 +59,7 @@ frappe.router.on('change', () => {
     if (currentRoute !=="Workspaces/Document Management"){
 
         if (previousRoute =="my-drive-v2"){
-            console.log("currentRoute",currentRoute);
+            // console.log("currentRoute",currentRoute);
             window.location.reload();
             return;
         

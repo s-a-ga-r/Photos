@@ -108,11 +108,13 @@ def process_file(file: "File", event: str) -> "Photo":
     if event != "after_insert":
         raise NotImplementedError
     
-    if not file.content_type:
-        return
 
     if file.is_folder or not file.content_type.startswith("image"):
         return
+    
+    if not file.content_type:
+        return
+    
     
     if not file.file_url.startswith("/files/my-drive/"):
         return

@@ -1306,6 +1306,7 @@ def delete_bulk_items(bulk_files):
 
 
 def delete_is_folder_files(is_folder_files):
+    print("its folder and going inside to delete files ")
     total = len(is_folder_files)
     count = 0
     for row in is_folder_files:
@@ -1373,6 +1374,8 @@ def delete_physical_file(folder_path, filename):
     filename    → "abc.png" OR folder name
     """
 
+    print("delete physical file folder_path",folder_path)
+
     # Remove the "Home/" prefix
     if folder_path.startswith("Home/"):
         clean_path = folder_path.replace("Home/", "", 1)
@@ -1381,17 +1384,19 @@ def delete_physical_file(folder_path, filename):
     else:
         clean_path = folder_path
 
+    username = frappe.db.get_value("User",frappe.session.user,"username")
+
     # Build full physical path
     full_path = frappe.get_site_path(
-        "public", "files", "my-drive", clean_path, filename
+        "public", "files", "my-drive",username,filename
     )
 
     scrap_path = frappe.get_site_path(
-        "public", "files", "my-drive","Scrap Files", filename
+        "public", "files", "my-drive","Scrap Files",username,filename
     )
 
     scrap_folder = frappe.get_site_path(
-        "public", "files", "my-drive","Scrap Files"
+        "public", "files", "my-drive","Scrap Files",username
     )
 
 
@@ -1610,6 +1615,8 @@ def upload_nested_folder_to_my_drive():
         top_folder = frappe.form_dict.get("top_folder",'')
         total_files = int(frappe.form_dict.get('total_files', 0))
         total_folders = int(frappe.form_dict.get('total_folders', 0))
+        username = frappe.db.get_value("User",frappe.session.user,"username")
+        print("username",username)
 
         base_top_folder = f"{base_folder}/{top_folder}" if base_folder and top_folder else base_folder
         
@@ -1623,8 +1630,10 @@ def upload_nested_folder_to_my_drive():
         
         # Get the base my-drive physical path
         site_path = get_site_path()
-        my_drive_path = os.path.join(site_path, 'public', 'files', 'my-drive')
-        print("created site_path",my_drive_path)
+        
+        my_drive_path = os.path.join(site_path, 'public', 'files', 'my-drive',username)
+        my_drive_base_path = os.path.join(site_path, "public", "files", "my-drive")
+        print("created my_drive_path",my_drive_path)
         # Ensure my-drive directory exists
         if not os.path.exists(my_drive_path):
             os.makedirs(my_drive_path)
@@ -1711,25 +1720,39 @@ def upload_nested_folder_to_my_drive():
                 print(f"File saved physically at: {file_path}")
                 
                 # Create the file URL relative to the my-drive folder
-                relative_path_from_mydrive = os.path.relpath(file_path, my_drive_path)
-                file_url = f"/files/my-drive/{relative_path_from_mydrive.replace(os.sep, '/')}"
-                
+                # relative_path_from_mydrive = os.path.relpath(file_path, my_drive_path)
+                # file_url = f"/files/my-drive/{relative_path_from_mydrive.replace(os.sep, '/')}"
+
+                # relative_path = os.path.relpath(file_path, my_drive_path)
+                # file_url = f"/files/my-drive/{relative_path.replace(os.sep, '/')}"
+
+                relative_path = os.path.relpath(file_path, my_drive_base_path)
+                print("relative path",relative_path)
+                file_url = f"/files/my-drive/{relative_path.replace(os.sep, '/')}"
+                print("the final file url is ",file_url)
+                frappe.flags.ignore_file_size_limit = True
+
                 # Create File document in Frappe
-                file_doc = frappe.get_doc({
+                file = frappe.get_doc({
                     "doctype": "File",
                     "file_name": filename,
                     "file_url": file_url,
                     "folder": target_folder,
                     "is_private": 0,
                 })
-                file_doc.insert(ignore_permissions=True)
+                file.insert(ignore_permissions=True)
                 
                 # Create Drive Manager document
+
+                print("file name",file.name)
+                print("is folder",file.is_folder)
+
+
                 try:
                     drive_doc = frappe.get_doc({
                         "doctype": "Drive Manager",
                         "file_name": filename,
-                        "attached_to_name": file_doc.name,
+                        "attached_to_name": file.name,
                         "file_url": file_url,
                         "folder": target_folder,
                         "created_by": frappe.session.user,
@@ -1737,11 +1760,19 @@ def upload_nested_folder_to_my_drive():
                     drive_doc.insert(ignore_permissions=True)
                     drive_id = drive_doc.name
                 except Exception as drive_error:
+                    frappe.log_error(
+                        title="Drive Manager Creation Failed",
+                        message=frappe.as_json({
+                            "traceback": frappe.get_traceback(),
+                            "target_folder": target_folder,
+                            "file_id": file.name
+                        })
+                    )
                     print(f"Drive document creation failed: {str(drive_error)}")
                     drive_id = "Not Created"
                 
                 uploaded_files.append({
-                    "file_id": file_doc.name,
+                    "file_id": file.name,
                     "drive_id": drive_id,
                     "file_name": filename,
                     "file_url": file_url,
@@ -1799,6 +1830,7 @@ def create_nested_folder_structure1(folder_str,my_drive_path):
         uploaded_folders_dict = {}
         for i in range(len(folders)):
             folder_name = folders[i]
+            print("folder_name",folder_name)
             if folder_name == "Home":
                 continue
             parent_list = folders[:i]
@@ -1912,7 +1944,7 @@ def format_last_login(login_time):
 
 
 
-@frappe.whitelist()
+'''@frappe.whitelist()
 def upload_file_chunk(
         file_name,
         chunk_index,
@@ -1939,6 +1971,60 @@ def upload_file_chunk(
             folder
         )
 
+    return {"status": "chunk_received"}'''
+
+
+# @frappe.whitelist()
+# def upload_file_chunk():
+#     file_name = frappe.form_dict.get("file_name")
+#     chunk_index = frappe.form_dict.get("chunk_index")
+#     total_chunks = frappe.form_dict.get("total_chunks")
+#     folder = frappe.form_dict.get("folder")
+#     upload_id = frappe.form_dict.get("upload_id")
+#     chunk = frappe.request.files.get("file")
+#     print("chunk is ",chunk)
+#     if not chunk:
+#         frappe.throw("Chunk missing")
+
+#     temp_dir = get_site_path("private", "chunk_uploads", upload_id)
+#     os.makedirs(temp_dir, exist_ok=True)
+
+#     chunk_path = os.path.join(temp_dir, f"chunk_{chunk_index}")
+#     chunk.save(chunk_path)
+
+#     # If last chunk → merge
+#     if int(chunk_index) + 1 == int(total_chunks):
+#         return finalize_upload(
+#             upload_id,
+#             file_name,
+#             total_chunks,
+#             folder
+#         )
+
+#     return {"status": "chunk_received"}
+
+@frappe.whitelist()
+def upload_file_chunk():
+    file_name = frappe.form_dict.get("file_name")
+    chunk_index = frappe.form_dict.get("chunk_index")
+    total_chunks = frappe.form_dict.get("total_chunks")
+    folder = frappe.form_dict.get("folder")
+    upload_id = frappe.form_dict.get("upload_id")
+    chunk = frappe.request.files.get("file")
+    print("chunk",chunk)
+    
+    if not chunk:
+        frappe.throw("Chunk missing")
+
+    temp_dir = get_site_path("private", "chunk_uploads", upload_id)
+    os.makedirs(temp_dir, exist_ok=True)
+
+    chunk_path = os.path.join(temp_dir, f"chunk_{chunk_index}")
+    chunk.save(chunk_path)
+
+    if int(chunk_index) + 1 == int(total_chunks):
+        return finalize_upload(upload_id, file_name, total_chunks, folder)
+
     return {"status": "chunk_received"}
 
 
@@ -1946,14 +2032,21 @@ def finalize_upload(upload_id, file_name, total_chunks, folder):
     site_path = get_site_path()
 
     username = frappe.db.get_value("User",frappe.session.user,"username")
+
     if username:
         user_folder = username
+        print("okay username",username)
     else:
         user_folder = ""
+        print("Not okay username",username)
 
     my_drive_path = os.path.join(
-        site_path, "public", "files", "my-drive",user_folder
+        site_path, "public", "files", "my-drive",username
     )
+    my_drive_base_path = os.path.join(site_path, "public", "files", "my-drive")
+
+    print("my_drive_path",my_drive_path)
+    print("folder",folder)
     
     os.makedirs(my_drive_path, exist_ok=True)
 
@@ -1996,9 +2089,17 @@ def finalize_upload(upload_id, file_name, total_chunks, folder):
     # frappe.utils.remove_folder(temp_dir)
     shutil.rmtree(temp_dir, ignore_errors=True)
 
+    print("whats file_path",file_path)
+
     # Create File URL
-    relative_path = os.path.relpath(file_path, my_drive_path)
+    # relative_path = os.path.relpath(file_path, my_drive_path)
+    relative_path = os.path.relpath(file_path, my_drive_base_path)
+
+    print("relative path",relative_path)
+    # file_url = f"/files/my-drive/{relative_path.replace(os.sep, '/')}"
     file_url = f"/files/my-drive/{relative_path.replace(os.sep, '/')}"
+
+    print("the final file url is ",file_url)
 
     frappe.flags.ignore_file_size_limit = True
 
