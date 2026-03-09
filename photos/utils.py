@@ -136,6 +136,8 @@ def create_folder(folder:"File",event:str):
 
     if not folder.is_folder:
         return
+    
+    print("folder creating in drive manager from utils ",folder.folder)
     try:
         drive = frappe.new_doc("Drive Manager")
         drive.file_name = folder.file_name
@@ -144,13 +146,12 @@ def create_folder(folder:"File",event:str):
         drive.created_by = frappe.session.user
         head, tail = os.path.split(folder.name)
         drive.folder = head
-
+        if folder.folder == "Home":
+            drive.is_user_folder = 1
         frappe.msgprint(str("{0} Created Folder Successfully".format(folder.file_name)))
-
         return drive.save()
     except LinkValidationError:
         frappe.msgprint("Parent folder not found. Cannot create Drive Manager entry.")
-    
     except Exception as e:
         # Catch any other unexpected error
         frappe.msgprint(f"Unexpected error: {str(e)}")
@@ -160,7 +161,6 @@ def create_folder(folder:"File",event:str):
 def create_user(user:"User",event:str):
     if event != "after_insert":
         raise NotImplementedError
-    
     try:
         drv_access = frappe.new_doc("Drive Access")
         drv_access.user = user.email

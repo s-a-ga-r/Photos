@@ -12,12 +12,18 @@ from frappe.utils import get_site_path
 from frappe.utils import now
 
 from photos.my_drive.doctype.docman_audit_log.docman_audit_log import make_audit_dict,create_audit_log
-
-
+# from photos.file_utils import get_all_data
 
 
 @frappe.whitelist()
-def render_template(owner,folder,limit_start,limit_page_length):    
+def render_template(owner,folder,limit_start,limit_page_length):
+    user_roles = frappe.get_roles(owner)
+
+    username = frappe.get_value("User",{"email":owner},"username")
+
+    print("username",username)
+
+    # frappe.msgprint(str(user_roles))
     drive_access = frappe.get_value("Drive Access", {"user": owner},["view_only", "upload_only","all"], as_dict=True) or {}
     if not drive_access and frappe.session.user != "Administrator" :
         frappe.throw(_("You do not have access to this drive. Please contact your administrator."))
@@ -50,7 +56,6 @@ def render_template(owner,folder,limit_start,limit_page_length):
             user_details['standard_img'] = initials
             user_details['designation'] = owner
             user_details['employee_name'] = last_login.full_name
-
         else:
             last_login = frappe.get_value("User",{"email":owner},['last_active'],as_dict = True) or {}
             initials = "".join([part[0] for part in user_details.employee_name.strip().split()[:2]]).upper()
@@ -61,44 +66,21 @@ def render_template(owner,folder,limit_start,limit_page_length):
     
     # frappe.msgprint(str(user_details))
 
-    query="""SELECT
-        dm.name as drive_id,
-        dm.file_name AS filename,
-        dm.created_by,
-        f.name as file_id,
-        f.folder,
-        f.file_type,
-        f.creation,
-        f.is_folder,
-        f.file_url,
-        0 AS shared
-    FROM
-        `tabDrive Manager` AS dm
-    INNER JOIN
-        `tabFile` AS f ON f.name = dm.attached_to_name
-    
-    WHERE
-        dm.created_by = %s AND  f.folder = %s
-    ORDER BY
-        f.creation DESC
-    """
-    # query="""SELECT
-    
-   
-    # frappe.msgprint(str(data))
+    if "Drive Admin" in user_roles:
+        # frappe.msgprint(str(folder))
+        result = get_all_data(folder)
+        # frappe.msgprint(str(result))
+    else:
+        print("else:",user_roles)
+        print("owner:",owner)
+        print("folder:",folder)
 
-    query2 = """
-        select
-            fac.for_user,
-            fac.read,
-            fac.write,
-            fac.upload,
-            fac.delete_file,
-            fac.download,
-            fac.share,
-            fac.seen,
+        folder = f'{folder}/{username}'
+        
+
+        query="""SELECT
             dm.name as drive_id,
-            dm.file_name as filename,
+            dm.file_name AS filename,
             dm.created_by,
             f.name as file_id,
             f.folder,
@@ -106,25 +88,60 @@ def render_template(owner,folder,limit_start,limit_page_length):
             f.creation,
             f.is_folder,
             f.file_url,
-            1 AS shared
-        from
-            `tabFile Access Control` as fac
-        inner join
-            `tabDrive Manager` as dm on fac.parent = dm.name
-        left join
-            `tabFile` as f on dm.attached_to_name = f.name
-        where
-            fac.for_user = %s and f.folder = %s
+            0 AS shared
+        FROM
+            `tabDrive Manager` AS dm
+        INNER JOIN
+            `tabFile` AS f ON f.name = dm.attached_to_name
+        
+        WHERE
+            dm.created_by = %s AND  f.folder = %s and dm.is_user_folder = 0
+        ORDER BY
+            f.creation DESC
         """
-    data = frappe.db.sql(query,(owner,folder), as_dict=True)
-    data2 = frappe.db.sql(query2,(owner, folder), as_dict=True)
+        # query="""SELECT
 
-    # frappe.msgprint(str(data2))
+        # frappe.msgprint(str(data))
 
-    combined_data = data + data2
+        query2 = """
+            select
+                fac.for_user,
+                fac.read,
+                fac.write,
+                fac.upload,
+                fac.delete_file,
+                fac.download,
+                fac.share,
+                fac.seen,
+                dm.name as drive_id,
+                dm.file_name as filename,
+                dm.created_by,
+                f.name as file_id,
+                f.folder,
+                f.file_type,
+                f.creation,
+                f.is_folder,
+                f.file_url,
+                1 AS shared
+            from
+                `tabFile Access Control` as fac
+            inner join
+                `tabDrive Manager` as dm on fac.parent = dm.name
+            left join
+                `tabFile` as f on dm.attached_to_name = f.name
+            where
+                fac.for_user = %s and f.folder = %s and dm.is_user_folder = 0
+            """
+        data = frappe.db.sql(query,(owner,folder), as_dict=True)
+        data2 = frappe.db.sql(query2,(owner, folder), as_dict=True)
 
-    result = combined_data[int(limit_start):int(limit_page_length)]
+        # frappe.msgprint(str(data2))
 
+        combined_data = data + data2
+
+        result = combined_data[int(limit_start):int(limit_page_length)]
+
+        # frappe.msgprint(str(result))
 
     audt_log = {
         "opration":"View",
@@ -150,6 +167,43 @@ def render_template(owner,folder,limit_start,limit_page_length):
         "drive_access": drive_access,
         "total_notification": frappe.db.count("File Access Control", filters={"for_user":owner,"seen":0}, debug=True)
     }
+
+
+
+
+
+def get_all_data(folder):
+    print("folder",folder)
+
+    query="""SELECT
+        dm.name as drive_id,
+        dm.file_name AS filename,
+        dm.created_by,
+        f.name as file_id,
+        f.folder,
+        f.file_type,
+        f.creation,
+        f.is_folder,
+        f.file_url,
+        0 AS shared
+    FROM
+        `tabDrive Manager` AS dm
+    INNER JOIN
+        `tabFile` AS f ON f.name = dm.attached_to_name
+    WHERE
+        f.folder = %s
+    ORDER BY
+        f.creation DESC
+    """
+
+    data = frappe.db.sql(query,(folder), as_dict=True)
+
+    return data
+
+    # Logic for Drive Admin
+    frappe.msgprint(str(data))
+    
+    print("data :",data)
 
 @frappe.whitelist()
 def share(share_files):
@@ -1399,7 +1453,6 @@ def delete_physical_file(folder_path, filename):
         "public", "files", "my-drive","Scrap Files",username
     )
 
-
     if not os.path.exists(full_path):
         return f"File/Folder not found: {full_path}"
 
@@ -1421,7 +1474,6 @@ def delete_physical_file(folder_path, filename):
             # directory not empty → need recursive delete
             shutil.rmtree(full_path)
             return f"Deleted folder with contents: {full_path}"
-
 
 
 '''
@@ -1600,13 +1652,6 @@ def upload_file():
         frappe.log_error(f"File upload error: {str(e)}")
         frappe.throw(f"Error uploading file: {str(e)}")
 
-
-
-
-
-
-
-
 @frappe.whitelist()
 def upload_nested_folder_to_my_drive():
     try:
@@ -1617,9 +1662,10 @@ def upload_nested_folder_to_my_drive():
         total_folders = int(frappe.form_dict.get('total_folders', 0))
         username = frappe.db.get_value("User",frappe.session.user,"username")
         print("username",username)
+        print("base_folder",base_folder)
+        print("top_folder",top_folder)
+        base_top_folder = f"{base_folder}/{username}/{top_folder}" if base_folder and top_folder else base_folder
 
-        base_top_folder = f"{base_folder}/{top_folder}" if base_folder and top_folder else base_folder
-        
         print(f'Total files: {total_files}, Total folders: {total_folders}, Base folder: {base_folder}')
         
         if total_files == 0:
@@ -1658,7 +1704,7 @@ def upload_nested_folder_to_my_drive():
                 # print(f"Creating folder structure: {target_folder}")
                 # if create_nested_folder_structure(target_folder, my_drive_path):
                 #     created_folders_count += 1
-                uploaded_folders_d = create_nested_folder_structure1(target_folder, my_drive_path)
+                uploaded_folders_d = create_nested_folder_structure1(target_folder,my_drive_path,username)
                 if uploaded_folders_d:
                     print("Uploaded Folder:",uploaded_folders_d)
                     uploaded_folders.append(uploaded_folders_d)
@@ -1683,10 +1729,17 @@ def upload_nested_folder_to_my_drive():
                 continue
             
             # Determine the target folder (full path where file should be saved)
+            print("my_drive_path",my_drive_path)
+            print("base_folder",base_folder)
+            print("folder_path",folder_path)
             if folder_path:
-                target_folder = f"{base_folder}/{folder_path}" if base_folder else folder_path
+                target_folder = f"{base_folder}/{username}/{folder_path}" if base_folder else folder_path
+                
             else:
                 target_folder = base_folder
+
+            print("target_folder",target_folder)
+            print("base_folder_path ",folder_path)
             
             print(f"Target folder for {uploaded_file.filename}: {target_folder}")
             
@@ -1699,12 +1752,14 @@ def upload_nested_folder_to_my_drive():
                 continue
             try:
                 # Get physical folder path for saving file
-                target_physical_path = get_physical_folder_path(target_folder, my_drive_path)
+                target_physical_path = get_physical_folder_path2(folder_path, my_drive_path)
                 print(f"Physical path for file: {target_physical_path}")
                 
                 # Handle filename conflicts
                 filename = uploaded_file.filename
                 file_path = os.path.join(target_physical_path, filename)
+
+                print("oakay so file_path",file_path)
                 
                 counter = 1
                 original_filename = filename
@@ -1741,13 +1796,10 @@ def upload_nested_folder_to_my_drive():
                     "is_private": 0,
                 })
                 file.insert(ignore_permissions=True)
-                
                 # Create Drive Manager document
 
                 print("file name",file.name)
                 print("is folder",file.is_folder)
-
-
                 try:
                     drive_doc = frappe.get_doc({
                         "doctype": "Drive Manager",
@@ -1781,12 +1833,12 @@ def upload_nested_folder_to_my_drive():
                     "physical_path": file_path,
                     "created_by": frappe.session.user
                 })
-                
             except Exception as file_error:
                 print(f"Error uploading file {uploaded_file.filename}: {str(file_error)}")
                 continue
         
         if uploaded_files:
+            # print("uploaded_files",uploaded_files)
             return {
                 "success": True,
                 "folder": base_top_folder,
@@ -1815,8 +1867,10 @@ def upload_nested_folder_to_my_drive():
         }
 
 
-def create_nested_folder_structure1(folder_str,my_drive_path):
+def create_nested_folder_structure1(folder_str,my_drive_path,username):
+
     print(f"Creating Nested Folder Structure : {folder_str}")
+    print(f"my_drive_path : {my_drive_path}")
         # folder = Home/imges
     try:
         if not folder_str or folder_str == "/" or folder_str == "Home":
@@ -1826,14 +1880,22 @@ def create_nested_folder_structure1(folder_str,my_drive_path):
         folders = folder_path.split('/') # ['Home', 'imges'],['Home', 'imges', 'aaa']
         current_logical_path = ""
         current_physical_path = my_drive_path
-            
+
+        print("folders",folders)
         uploaded_folders_dict = {}
+        drive_me = []
+        folders.insert(1,username)
+
         for i in range(len(folders)):
             folder_name = folders[i]
             print("folder_name",folder_name)
             if folder_name == "Home":
                 continue
+            if folder_name == username:
+                print("foldername is username :",username)
+                continue
             parent_list = folders[:i]
+            print("parent_list",parent_list)
             if len(parent_list) == 1:
                 parent_folder = parent_list[0]
             else:
@@ -1856,43 +1918,66 @@ def create_nested_folder_structure1(folder_str,my_drive_path):
 
             if not existing_file_folder:
                 print(f"Creating File folder: {folder_name} under parent: {parent_folder}")
-                folder_doc = frappe.get_doc({
+                file_doc = frappe.get_doc({
                     "doctype": "File",
                     "file_name": folder_name,
                     "is_folder": 1,
                     "folder": parent_folder
                 })
-                folder_doc.insert(ignore_permissions=True)
-                existing_file_folder = folder_doc.name
-                uploaded_folders_dict["file_id"] = folder_doc.name
+                file_doc.insert(ignore_permissions=True)
+                existing_file_folder = file_doc.name
+                uploaded_folders_dict["file_id"] = file_doc.name
                 uploaded_folders_dict["file_name"] = folder_name
                 uploaded_folders_dict["folder"] = parent_folder
 
                 print(f"Created File folder: {folder_name}")
             
-            # Check and create Drive Manager folder
-            existing_drive_folder = frappe.db.get_value("Drive Manager", {
-                "attached_to_name": existing_file_folder,
-                "is_folder": 1,
-            })
-
-            print("Drive exist is :",existing_file_folder)
-            
-            if not existing_drive_folder:
-                print(f"Creating Drive folder: {folder_name} under parent: {parent_folder}")
-
-                drive_folder_doc = frappe.get_doc({
-                    "doctype": "Drive Manager",
-                    "file_name": folder_name,
+                # Check and create Drive Manager folder auto after inserting file doctype
+                drive_folder_exist = frappe.db.get_value("Drive Manager", {
                     "attached_to_name": existing_file_folder,
                     "is_folder": 1,
-                    "folder": parent_folder,
-                    "created_by": frappe.session.user
                 })
-                
-                drive_folder_doc.insert(ignore_permissions=True)
-                uploaded_folders_dict["drive_id"] = drive_folder_doc.name
-                print(f"Created Drive Manager folder: {folder_name}")
+
+                ##### drive_id creating by after file doctype inserted by default  ####
+
+                uploaded_folders_dict["drive_id"] = drive_folder_exist
+                uploaded_folders_dict["shared"] = 0
+
+                # print("drive_folder_exist",drive_folder_exist)
+                # print("file_id:",existing_file_folder)
+
+
+            
+                # if not drive_folder_exist:
+                #     print("hello")
+                #     print(f"Creating Drive folder: {folder_name} under parent: {parent_folder}")
+                #     drive_doc = frappe.get_doc({
+                #         "doctype": "Drive Manager",        print("drive_me",drive_me)
+
+                #         "file_name": folder_name,
+                #         "attached_to_name": existing_file_folder,
+                #         "is_folder": 1,
+                #         "folder": parent_folder,
+                #         "created_by": frappe.session.user
+                #     })
+
+                #     # doc = frappe.new_doc('Drive Manager')
+                #     # doc.file_name = folder_name
+                #     # doc.attached_to_name
+                #     # doc.is_folder = 1
+                #     # doc.folder = parent_folder
+                #     # doc.created_by = frappe.session.user
+                #     # doc.insert()
+
+
+                #     drive_doc.insert(ignore_permissions=True)
+                #     print("drive id",drive_doc.name)
+                #     drive_me.append(drive_doc.name) #= drive_doc.name
+                #     uploaded_folders_dict["drive_id"] = drive_doc.name
+                #     drive_me.append(uploaded_folders_dict)
+                #     print(f"Created Drive Manager folder: {folder_name} and drive_id:{drive_doc.name}")
+                # else:
+                #     print("in else drive_folder_exist",drive_folder_exist)
         return uploaded_folders_dict
        
     except Exception as e:
@@ -1903,10 +1988,22 @@ def create_nested_folder_structure1(folder_str,my_drive_path):
 
 
 
-def get_physical_folder_path(folder_path, my_drive_path):
+def get_physical_folder_path2(folder_path, my_drive_path):
+    physical_path = os.path.join(my_drive_path,folder_path)
+
+    return physical_path
+
+def get_physical_folder_path(target_folder, my_drive_path):
     if not folder_path or folder_path == "Home":
         return my_drive_path
+
+    folder_path = target_folder
     
+    print("inside get_physical_folder_path()")
+
+    print("folder_path",folder_path)
+    print("my_drive_path",my_drive_path)
+
     # Remove "Home" from the beginning and clean up the path
     if folder_path.startswith("Home/"):
         relative_path = folder_path[5:]  # Remove "Home/"
@@ -1914,7 +2011,6 @@ def get_physical_folder_path(folder_path, my_drive_path):
         relative_path = folder_path[4:].lstrip('/')  # Remove "Home"
     else:
         relative_path = folder_path
-    
     if not relative_path:
         return my_drive_path
     

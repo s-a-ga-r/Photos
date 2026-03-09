@@ -299,7 +299,6 @@ def get_tags(file_id):
                     print("Not Found")
         else:
             print("Photo document not created yet")
-            
         return persons
     
 

@@ -6,7 +6,6 @@ frappe.pages['my-drive-v2'].on_page_load = function (wrapper) {
 		
 	});
 
-
 	const sidebar_button = `<button class="btn-reset sidebar-toggle-btn" aria-label="Toggle Sidebar" data-original-title="" title="">
 					<svg class="es-icon icon-md sidebar-toggle-placeholder"><use href="#es-line-align-justify"></use></svg>
 					<span class="sidebar-toggle-icon">
@@ -87,20 +86,21 @@ const MyDriveV3 = {
 			await frappe.xcall("photos.file_utils.create_user_folder", {
 				user: frappe.session.user
 			});
-
 			this.uploadFile()
 			this.uploadFolder()
 			// this.uploadLarge()
 			this.newFolder()
 			this.render_template(); // For checking i added here this line today Nov 17 at 6 pm
 		} else if (this.drive_access.upload_only == 1) {
+			await frappe.xcall("photos.file_utils.create_user_folder", {
+				user: frappe.session.user
+			});
 			this.uploadFile()
 			this.uploadFolder()
 			// this.uploadLarge()
 			this.render_template();   // For checking i added here this line today Nov 17 at 6 pm
 		}else if(this.drive_access.view_only == 1){
 			this.render_template();
-
 		}else {
 			frappe.msgprint("Don't Have Access ! Please Contact Admin")
 			// console.log("User Dont Have Drive Access");
@@ -192,9 +192,7 @@ const MyDriveV3 = {
 				}
 			}
 		});
-
 		// $(frappe.render_template("my_drive_v3", context)).appendTo($(this.page.main).parent());     but this didnt work
-
 	},
 
 	search_engine() {
@@ -1543,12 +1541,12 @@ const MyDriveV3 = {
 		// this.page.set_title(__(this.current_folder));
 
 		let folder_path = folder;
-		const folders1 = folder_path.split("/");
-		const set_title = folders1[folders1.length - 1]
+		const folder_array = folder_path.split("/");
+		const set_title = folder_array[folder_array.length - 1]
 
 		// console.log("set_title",set_title);
 		// console.log("folder_path",folder_path);
-		// console.log("folder1",folders1);
+		// console.log("folder1",folder_array);
 
 
 		this.page.set_title(__(set_title));
@@ -1572,7 +1570,7 @@ const MyDriveV3 = {
 			folder_input.onchange = function () {
 				const files = Array.from(folder_input.files);
 
-				console.log("Selected files:", files);
+				// console.log("Selected files:", files);
 
 				if (files.length === 0) {
 					frappe.msgprint(__("No files selected"));
@@ -1595,7 +1593,7 @@ const MyDriveV3 = {
 
 				// Prepare nested folder structure data
 				const folderData = self.prepareNestedFolderData(validFiles);
-				console.log("Nested folder structure:", folderData);
+				// console.log("Nested folder structure:", folderData);
 
 				// Send to server
 				self.sendNestedFolderToServer(folderData);
@@ -1637,8 +1635,8 @@ const MyDriveV3 = {
 			});
 		});
 
-		console.log("All unique folder paths needed:", Array.from(allFolderPaths));
-		console.log("Files with their paths:", folderStructure);
+		// console.log("All unique folder paths needed:", Array.from(allFolderPaths));
+		// console.log("Files with their paths:", folderStructure);
 
 		return {
 			files: folderStructure,
@@ -1652,7 +1650,7 @@ const MyDriveV3 = {
 
 		// Create FormData for multiple files and folder structure
 
-		console.log("sending nested folderdata", folderData);
+		// console.log("sending nested folderdata", folderData);
 		let top_level = folderData.folderPaths[0]
 
 		let uploadDialog = this.createUploadProgressDialog(folderData.files);
@@ -1676,6 +1674,8 @@ const MyDriveV3 = {
 			form_data.append(`full_path_${index}`, fileInfo.fullPath);
 		});
 
+		console.log("folder_data",folderData);
+		
 		var xhr = new XMLHttpRequest();
 		xhr.open("POST", "/api/method/photos.my_drive.page.my_drive_v2.my_drive_v2.upload_nested_folder_to_my_drive", true);
 		xhr.setRequestHeader("Accept", "application/json");
@@ -1697,26 +1697,37 @@ const MyDriveV3 = {
 
 					let files_folders = [...matchedFiles, ...matchedFolders];
 
-					console.log("Files uploaded to the current folder", files_folders);
+					console.log("Files and  folders combined", files_folders);
 
 					self.completeAllUploads(uploadDialog, files.length, createdFolders);
 
 					// console.log(`Successfully created ${createdFolders} folders and uploaded ${files.length} files`);
 
+					console.log("folders",folders);
+					console.log("created folders",createdFolders);
+					
 					let folder_path = folder;
-					let folders1 = folder_path.split("/");
-					let foldername = folders1[folders1.length - 1]
+					let folder_array = folder_path.split("/");
+					let foldername = folder_array[folder_array.length - 1]
 
 					self.handlePermissions(files_folders);
 
-					let breadcrumb = $(".level-item");
-					let add_folder = `<a href="#" class="open-folder" data-folder-name=${folder_path}>${foldername}</a>`
-					breadcrumb.append(`&nbsp/&nbsp;${add_folder}`);
+					console.log("foldername :",foldername);
+					console.log("folder_path :",folder_path);
 
+					self.folders_array = folder_array
+
+					console.log("basefolder which is also current folder",baseFolderName);
+					let folder_dict = folders.find(item => item.file_name === foldername);
+					console.log("folder_dict",folder_dict);
+					// let add_folder = `<a href="#" class="open-folder" data-folder-name="${new_folder_path}" data-drive-id=${drive_id} data-is-shared=${shared}>${folder}</a>`
+
+					let breadcrumb = $(".level-item");
+					let add_folder = `<a href="#" class="open-folder" data-folder-name="${folder_path}" data-drive-id=${folder_dict.drive_id} data-is-shared=${folder_dict.shared}>${foldername}</a>`
+					breadcrumb.append(`&nbsp/&nbsp;${add_folder}`);
 
 					if ($(".frappe-list .result").length > 0) {
 						console.log("if .result");
-
 						$(".frappe-list .result").remove();
 					}
 
@@ -2290,13 +2301,13 @@ const MyDriveV3 = {
 						`;
 					}
 				} else {
-					console.log("folders", file.file_id);
+					console.log("this is folders", file.file_id);
 					newFileBox.classList.add("file");
 					newFileBox.innerHTML = `
 						<div class="file-header">
 							<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id=${file.file_id} data-docname=${file.drive_id}>
 						</div>
-						<a href="#" class="open-folder" data-folder-name="${file.file_id}">
+						<a href="#" class="open-folder" data-folder-name="${file.file_id}" data-drive-id="${file.drive_id}" data-is-shared=${file.shared}>
 							<span class="corner"></span>
 								<div class="file-body">
 									<svg class="icon" style="width: 71px; height: 75px" aria-hidden="true">
@@ -2330,6 +2341,9 @@ const MyDriveV3 = {
 
 				// Show upload progress message
 				console.log(`File ${index + 1}/${files.length} added ${file.file_name} to UI`);
+
+				console.log("self.folders_array",self.folders_array);
+				
 
 			}, index * 300); // 300ms delay between each file
 		});
@@ -2387,8 +2401,6 @@ const MyDriveV3 = {
 
 
 				}
-
-
 
 				else if (file.file_name.includes('.')) {
 					console.log("files", file.file_name);
@@ -2469,9 +2481,6 @@ const MyDriveV3 = {
 			});
 
 		}
-
-
-
 	},
 
 	openFolder() {
@@ -2481,25 +2490,30 @@ const MyDriveV3 = {
 		$(document).off("click", ".open-folder").on("click", ".open-folder", function (event) {
 			event.preventDefault();  // Prevent default behavior
 			$('.ellipsis').show(); //this ellipsis is back, share, delete button's container 
-			console.log("folders_array", self.folders_array)
+			console.log("⚪ self.folders_array", self.folders_array)
+			console.log("⚪ length of self.folders_array", self.folders_array.length)
+			
 
 			let folder_path = $(this).data("folder-name");
 			let drive_id = $(this).data("drive-id");
 			let shared = $(this).data("is-shared");
 
-			console.log("ISSSS SHAREDDDDD",shared);
+			// console.log("ISSSS SHAREDDDDD",shared);
 			
-			const folders1 = folder_path.split("/");
-			const folder = folders1[folders1.length - 1]
+			const folder_array = folder_path.split("/");
+			const folder = folder_array[folder_array.length - 1]
+
+			console.log("okay The folder :",folder);
+			
 
 
 			let limit_start = 0;
 			let limit_page_length = 20;
 
 			if (self.folders_array.includes(folder)) {
-				console.log("If folder in Folder_array")
-				console.log("⚪ If opened folder :", folder)
-				console.log("⚪ Is Shared:", shared)
+				console.log("⚪ In If, Yes folder in Folder_array")
+				console.log("⚪ opened folder :", folder)
+				console.log("⚪ Is-Shared:", shared)
 
 
 				$(this).nextAll().remove();
@@ -2527,14 +2541,19 @@ const MyDriveV3 = {
 				self.FolderContent(drive_id,shared,limit_start, limit_page_length)
 				self.BackButton()
 			} else {
-				console.log("⚪ else opened folder:", folder)
+				console.log("⚪ In else, No folder in Folder_array")
+				console.log("⚪ opened folder :", folder)
 				console.log("⚪ Is Shared:", shared)
+
 				console.log("⚪ Drive Id:", drive_id)
-				console.log("folder_path :", folder_path)
-				console.log("current_folder last folder_path :", self.current_folder)
-				console.log("split folders", folders1)
+				console.log("⚪ folder_path :", folder_path)
+				console.log("self.current_folder means last folder_path :", self.current_folder)
+				console.log("split folders from folder_path", folder_array)
 				self.folders_array.push(folder)
 
+				console.log(`Pushed ${folder} In self.folders_array `);
+				console.log(`self.folders_array : ${self.folders_array}`);
+				
 				self.page.set_title(__(folder));
 				let base_url = window.location.pathname
 				let newUrl = base_url.split("my-drive-v2")[0] + "my-drive-v2/" + folder_path;
@@ -2547,10 +2566,10 @@ const MyDriveV3 = {
 				if (hasFolders) {
 					console.log("✅ Found 'Folders' link inside breadcrumb!");
 					$(".standard-filter-section .level-item a").remove()
-					// folders1.pop()
+					// folder_array.pop()
 					console.log("in if folders array", self.folders_array)
 					self.folders_array.length = 0
-					folders1.forEach(folder => {
+					folder_array.forEach(folder => {
 						console.log("okay folder", folder)
 						console.log("⚪ Is Shared:", shared)
 
@@ -2562,7 +2581,6 @@ const MyDriveV3 = {
 
 						if (folder == "Home") {
 							// console.log("if folde is home called");
-							
 							breadcrumb.append(`&nbsp;<a href="#" class="go-home">Home</a>`);
 							self.Home()
 
@@ -2580,16 +2598,10 @@ const MyDriveV3 = {
 					let add_folder = `<a href="#" class="open-folder" data-folder-name="${folder_path}" data-drive-id=${drive_id} data-is-shared=${shared}>${folder}</a>`
 					breadcrumb.append(`&nbsp/&nbsp;${add_folder}`);
 				}
-
-				
-
 				self.current_folder = folder_path
-
 				history.pushState({ folder: folder_path }, "", newUrl);
 				self.FolderContent(drive_id,shared,limit_start, limit_page_length)
 				// console.log("as well folder content");
-				
-
 				self.BackButton()
 				console.log(`openFolder ENDS HERE... array of folder :- ${self.folders_array}`);
 			}
@@ -5725,9 +5737,6 @@ const MyDriveV3 = {
 			// self.page.set_title(__('Home'));
 			 // Reset current folder to Home
 			// history.pushState({ folder: "Home" }, "", "/app/my-drive-v2");
-			
-
-			
 			// document.querySelector('[data-label="Back"]').style.display = 'none';
 		})
 	},
@@ -5824,8 +5833,8 @@ const MyDriveV3 = {
 			console.log("url", url);
 			// let url = window.location.pathname.split("/").slice(0, -1).join("/")
 
-			const folders1 = folder.split("/");
-			const set_title_folder = folders1[folders1.length - 1]
+			const folder_array = folder.split("/");
+			const set_title_folder = folder_array[folder_array.length - 1]
 
 			history.pushState({ folder: folder }, "", url);
 			self.page.set_title(__(set_title_folder));

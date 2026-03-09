@@ -11,7 +11,7 @@ class DocManAuditLog(Document):
 
 def make_audit_dict(log):
     print("audit_log",log)
-    print(log['session_user'])
+    # print(log['session_user'])
     # audit_log = {}
     if log['opration'] == "View":
         audit_log = {}

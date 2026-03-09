@@ -5,7 +5,6 @@ import shutil
 from datetime import datetime,timedelta
 import traceback
 
-
 from frappe import _
 from frappe.utils.file_manager import save_file
 from frappe.utils import get_site_path
@@ -14,34 +13,93 @@ from frappe.utils import now
 from photos.my_drive.doctype.docman_audit_log.docman_audit_log import make_audit_dict,create_audit_log
 from photos.my_drive.page.my_drive_v2.my_drive_v2 import get_tags
 
+
+
 @frappe.whitelist()
-def create_user_folder(user):
-	# frappe.msgprint(str(frappe.db.exists("Drive Access",user)))
-	if user and frappe.db.exists("Drive Access",user):
-		# frappe.msgprint(str("user created"))
-		all,upload_only = frappe.db.get_value("Drive Access",user,["all","upload_only"])
-		if all or upload_only:
-			username = frappe.db.get_value("User",user,"username")
-			
-			usr_flder = frappe.get_site_path(
-				"public", "files", "my-drive", username
-			)
-			if not os.path.exists(usr_flder):
-				os.makedirs(usr_flder)
-			else:
-				print("ths folder already exist")
-				# frappe.msgprint(str("folder already exist"))
-	elif user == "Administrator":
-		usr_flder = "administrator"
-		if not os.path.exists(usr_flder):
-			os.makedirs(usr_flder)
-		return
-	else:
-		frappe.msgprint(str("User Not in Drive Access"))
+def create_user_folder(user): #frappe.msgprint(str(frappe.db.exists("Drive Access", user)))
+    if user and frappe.db.exists("Drive Access", user): #frappe.msgprint(str("user created"))
+        all, upload_only = frappe.db.get_value("Drive Access", user, ["all", "upload_only"])
+        if all or upload_only:
+            username = frappe.db.get_value("User", user, "username")
+        usr_flder = frappe.get_site_path(
+            "public", "files", "my-drive", username
+        )
+        if not os.path.exists(usr_flder):
+            os.makedirs(usr_flder)
+            create_file(username)
+        else:
+            if not frappe.db.exists("File", {"file_name": username, "is_folder":1}):
+                create_file(username)
+            print("ths folder already exist")# frappe.msgprint(str("folder already exist"))
+    elif user == "Administrator":
+        usr_flder = "administrator"
+        if not os.path.exists(usr_flder):
+            os.makedirs(usr_flder)
+        return
+    else:
+        frappe.msgprint(str("User Not in Drive Access"))
+
+
+def create_file(username):
+    parent_folder = f"Home/{username}"
+    if not frappe.db.exists("File", {"file_name": username, "is_folder": 1,"folder":parent_folder}):
+        folder = frappe.get_doc({
+            "doctype": "File",
+            "file_name": username,
+            "is_folder": 1,
+            "folder": "Home"
+        })
+        folder.insert(ignore_permissions=True)
+
+    return folder
+
+    if not frappe.db.exists("File", parent_folder):
+        parent = frappe.new_doc("File")
+        parent.file_name = username
+        parent.is_folder = 1
+        parent.folder = "Home"
+        parent.insert(ignore_permissions=True)
+
+    file = frappe.new_doc("File")
+    file.file_name = username
+    file.is_folder = 1
+    file.folder = parent_folder
+    file.insert(ignore_permissions=True, ignore_if_duplicate=True)
+
+    return file
 
 
 
+# def create_file(username):
+#     file = frappe.new_doc("File")
+#     file.file_name = username
+#     file.is_folder = 1
+#     file.folder = f"Home/{username}"
+#     file.insert(ignore_if_duplicate=True)
+#     print("user folder created in File Doctype",file)
+#     return file
 
+    # file_doc = frappe.get_doc({
+    #     "doctype": "File",
+    #     "file_name": username,
+    #     "folder": "Home",
+    #     "is_private": 0,  # Make it public so it can be accessed via URL
+    # })
+    # file_doc.insert()
+    # frappe.msgprint(str("username folder created successfully"))
+	
+
+    # Create Drive Manager document
+    # dm = frappe.get_doc({
+    #     "doctype": "Drive Manager",
+    #     "file_name": filename,
+    #     "created_by": frappe.session.user,
+    #     "folder": folder,
+    #     "attached_to_name": file_doc.name
+    # })
+
+    # dm.flags.ignore_permissions = True
+    # dm.insert()
 
 
 import os
@@ -124,11 +182,6 @@ def upload_file_to_my_drive():
         # file_url = f"/files/my-drive/{relative_path.replace(os.sep, '/')}"
         # print("file_url", file_url)
         
-
-		
-        
-
-        
         # Create File document in Frappe
         file_doc = frappe.get_doc({
             "doctype": "File",
@@ -197,3 +250,7 @@ def upload_file_to_my_drive():
     except Exception as e:
         frappe.log_error(f"File upload error: {str(e)}")
         frappe.throw(f"Error uploading file: {str(e)}")
+
+
+
+        
