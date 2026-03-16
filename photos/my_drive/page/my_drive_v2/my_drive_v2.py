@@ -5,7 +5,6 @@ import shutil
 from datetime import datetime,timedelta
 import traceback
 
-
 from frappe import _
 from frappe.utils.file_manager import save_file
 from frappe.utils import get_site_path
@@ -18,11 +17,8 @@ from photos.my_drive.doctype.docman_audit_log.docman_audit_log import make_audit
 @frappe.whitelist()
 def render_template(owner,folder,limit_start,limit_page_length):
     user_roles = frappe.get_roles(owner)
-
     username = frappe.get_value("User",{"email":owner},"username")
-
-    print("username",username)
-
+    
     # frappe.msgprint(str(user_roles))
     drive_access = frappe.get_value("Drive Access", {"user": owner},["view_only", "upload_only","all"], as_dict=True) or {}
     if not drive_access and frappe.session.user != "Administrator" :
@@ -34,9 +30,9 @@ def render_template(owner,folder,limit_start,limit_page_length):
         last_active = last_login.get('last_active', None)
         updated_user_login=format_last_login(last_active)
         user_details['last_login'] = updated_user_login
+        username
     else:
         # user_details = frappe.get_value("Employee",{"prefered_email":owner},['employee_name','designation'],as_dict = True) or {}
-
         if frappe.db.exists("DocType", "Employee"):
             user_details = frappe.get_value(
                 "Employee",
@@ -46,7 +42,6 @@ def render_template(owner,folder,limit_start,limit_page_length):
             ) or {}
         else:
             user_details = {}
-
         if not user_details:
             last_login = frappe.get_value("User",{"email":owner},['last_active','full_name'],as_dict = True) or {}
             initials = "".join([part[0] for part in last_login.full_name.strip().split()[:2]]).upper()
@@ -68,16 +63,15 @@ def render_template(owner,folder,limit_start,limit_page_length):
 
     if "Drive Admin" in user_roles:
         # frappe.msgprint(str(folder))
-        result = get_all_data(folder)
+        result = get_data_for_drive_admin(folder)
         # frappe.msgprint(str(result))
     else:
-        print("else:",user_roles)
-        print("owner:",owner)
-        print("folder:",folder)
+        # print("else:",user_roles)
+        # print("owner:",owner)
+        # print("folder:",folder)
 
         folder = f'{folder}/{username}'
         
-
         query="""SELECT
             dm.name as drive_id,
             dm.file_name AS filename,
@@ -93,7 +87,6 @@ def render_template(owner,folder,limit_start,limit_page_length):
             `tabDrive Manager` AS dm
         INNER JOIN
             `tabFile` AS f ON f.name = dm.attached_to_name
-        
         WHERE
             dm.created_by = %s AND  f.folder = %s and dm.is_user_folder = 0
         ORDER BY
@@ -134,24 +127,16 @@ def render_template(owner,folder,limit_start,limit_page_length):
             """
         data = frappe.db.sql(query,(owner,folder), as_dict=True)
         data2 = frappe.db.sql(query2,(owner, folder), as_dict=True)
-
         # frappe.msgprint(str(data2))
-
         combined_data = data + data2
-
         result = combined_data[int(limit_start):int(limit_page_length)]
-
         # frappe.msgprint(str(result))
-
     audt_log = {
         "opration":"View",
         "session_user": frappe.session.user,
     }
     audit_log = make_audit_dict(audt_log)
-
-    create_audit_log(audit_log)
-
-    
+    create_audit_log(audit_log)    
     for item in result:
         persons = get_tags(item['file_id'])
         if persons:
@@ -172,7 +157,7 @@ def render_template(owner,folder,limit_start,limit_page_length):
 
 
 
-def get_all_data(folder):
+def get_data_for_drive_admin(folder):
     print("folder",folder)
 
     query="""SELECT
@@ -185,18 +170,19 @@ def get_all_data(folder):
         f.creation,
         f.is_folder,
         f.file_url,
-        0 AS shared
+        0 AS shared,
+        1 AS drive_admin
     FROM
         `tabDrive Manager` AS dm
     INNER JOIN
         `tabFile` AS f ON f.name = dm.attached_to_name
     WHERE
-        f.folder = %s
+        f.folder = %s and created_by != %s
     ORDER BY
         f.creation DESC
     """
 
-    data = frappe.db.sql(query,(folder), as_dict=True)
+    data = frappe.db.sql(query,(folder,frappe.session.user), as_dict=True)
 
     return data
 
@@ -430,21 +416,13 @@ def get_folders(owner,limit_start,limit_page_length):
         WHERE
             dm.is_folder = %s AND fac.for_user = %s
     """
-
-
     data = frappe.db.sql(query, (1,owner), as_dict=True)
     data2 = frappe.db.sql(query2, (1,owner), as_dict=True)
     # frappe.msgprint(str(data2))
-    
-
     # return
     combined_data = data + data2
-
     result = combined_data[int(limit_start):int(limit_page_length)]
-
     return {"folders": result}
-
-
 
 @frappe.whitelist()
 def get_documents_files(owner,limit_start,limit_page_length):
@@ -501,19 +479,13 @@ def get_documents_files(owner,limit_start,limit_page_length):
         """
     data = frappe.db.sql(query,(owner), as_dict=True)
     data2 = frappe.db.sql(query2,(owner), as_dict=True)
-
-
     combined_data = data + data2
-
     data = combined_data[int(limit_start):int(limit_page_length)]
-    
-   
     for item in data:
         if isinstance(item['creation'], datetime):
             item['creation'] = item['creation'].strftime('%b %d, %Y, %I:%M %p')
 
     # frappe.msgprint(str(data))
-    
     return {
         "files": data,
     }
@@ -521,8 +493,22 @@ def get_documents_files(owner,limit_start,limit_page_length):
 
 
 @frappe.whitelist()
-def get_folder_contents(folder,drive_id,shared,limit_start=0, limit_page_length=20):    
-   
+def get_folder_contents(folder,drive_id,shared,admin,limit_start=0, limit_page_length=20):
+    session_user = frappe.session.user
+    if admin:
+        doc =  frappe.get_doc("Drive Manager",drive_id)
+        print("created_by",doc.created_by)
+        print("filename",doc.file_name)
+        print("folder",doc.folder)
+        print("session user ", frappe.session.user)
+        print(f"ADMIN :{admin} the admin is looking {doc.created_by}'s files ")
+        session_user = doc.created_by
+
+    print("admin type",type(admin))
+
+    frappe.log_error(title="Folder Content Admin", message=admin)
+
+
     query="""
         SELECT
             dm.name as drive_id,
@@ -535,7 +521,8 @@ def get_folder_contents(folder,drive_id,shared,limit_start=0, limit_page_length=
             f.creation,
             f.is_folder,
             f.file_url,
-            0 AS shared
+            0 AS shared,
+            %s AS admin
         FROM
             `tabDrive Manager` AS dm
         INNER JOIN
@@ -563,7 +550,9 @@ def get_folder_contents(folder,drive_id,shared,limit_start=0, limit_page_length=
             f.creation,
             f.is_folder,
             f.file_url,
-            1 AS shared
+            1 AS shared,
+            %s As admin
+
         FROM
             `tabFile Access Control` as fac
         INNER JOIN
@@ -587,7 +576,7 @@ def get_folder_contents(folder,drive_id,shared,limit_start=0, limit_page_length=
             f.file_type,
             1 AS can_read,
             1 AS can_write
-        FROM  
+        FROM 
             `tabDrive Manager` AS dm
         LEFT JOIN
             `tabFile` AS f ON f.name = dm.attached_to_name
@@ -619,60 +608,37 @@ def get_folder_contents(folder,drive_id,shared,limit_start=0, limit_page_length=
             dm.creation DESC
     """
     # folders_data = frappe.db.sql(query3, (attached_to_name,), as_dict=True)
-
-
-    data = frappe.db.sql(query,(frappe.session.user,folder), as_dict=True)  # created_by session User
-
-    data2 = frappe.db.sql(query2,(frappe.session.user,folder), as_dict=True)
-
+    data = frappe.db.sql(query,(admin,session_user,folder), as_dict=True)  # created_by session User
+    data2 = frappe.db.sql(query2,(admin,session_user,folder), as_dict=True)
     combined_data = data + data2
 
-
-
-    upload_only = frappe.db.get_value("File Access Control", {'parent':drive_id,'for_user':frappe.session.user},"upload") or 0
-
+    upload_only = frappe.db.get_value("File Access Control", {'parent':drive_id,'for_user':session_user},"upload") or 0
     drive = frappe.get_doc("Drive Manager",drive_id)
 
-
-    if frappe.db.exists("Drive Manager",{'name':drive_id,'created_by':frappe.session.user}):
+    if frappe.db.exists("Drive Manager",{'name':drive_id,'created_by':session_user}):
         attached_name = drive.attached_to_name
-
-        folders_data = frappe.db.sql(query4,(attached_name,frappe.session.user), as_dict=True)
-
+        folders_data = frappe.db.sql(query4,(attached_name,session_user), as_dict=True)
         for row in folders_data:
             row["read"] = row.pop("can_read")
             row["write"] = row.pop("can_write")
             # row["file_url"] = frappe.get_value("File",{"folder":attached_to_name},"file_url")
-       
         combined_data += folders_data
-        
 
     if int(shared) and upload_only == 0:
-       
-
         # frappe.msgprint(str("hello"))
-    
         attached_name = drive.attached_to_name
-        
         '''in this condition if from notification open-folder or only file get location in
             In this below query missing field name File_url so need to solve that
             this query if only upload then should not let return inside folder data
         '''
         folders_data = frappe.db.sql(query3,(attached_name), as_dict=True)
         # frappe.msgprint(str(folders_data))
-
         for row in folders_data:
             row["read"] = row.pop("can_read")
             row["write"] = row.pop("can_write")
             # row["file_url"] = frappe.get_value("File",{"folder":attached_to_name},"file_url")
-       
         combined_data += folders_data
-    
-
     result = combined_data[int(limit_start):int(limit_page_length)]
-
-   
-    
     for item in result:
         # frappe.msgprint(str(item['file_id']))
         if isinstance(item['creation'], datetime):
@@ -682,11 +648,7 @@ def get_folder_contents(folder,drive_id,shared,limit_start=0, limit_page_length=
             item['persons'] = persons if persons else None
         else:
             item['persons'] = None
-
-
     return {"files": result,"upload_only": 1}
-
-
 
     # folders_data = frappe.get_list("Drive Manager", filters = {"folder": drive.attached_to_name},fields = ["file_name","attached_to_name,created_by","folder"],order_by="creation desc")
 
@@ -1277,6 +1239,8 @@ def delete_bulk_items(bulk_files):
         frappe.msgprint(_("No items selected for deletion."))
 
     bulk_data = json.loads(bulk_files)
+
+    print("bulk_data",bulk_data)
     results = []
 
     for entry in bulk_data:
@@ -1512,6 +1476,8 @@ def delete_physical_file(file_path, filename):
 
 
 
+
+
 @frappe.whitelist()
 def upload_file():
     """Custom file upload handler that saves files to My Drive folder with nested folder support"""
@@ -1665,18 +1631,14 @@ def upload_nested_folder_to_my_drive():
         print("base_folder",base_folder)
         print("top_folder",top_folder)
         base_top_folder = f"{base_folder}/{username}/{top_folder}" if base_folder and top_folder else base_folder
-
         print(f'Total files: {total_files}, Total folders: {total_folders}, Base folder: {base_folder}')
-        
         if total_files == 0:
             return {"success": False, "message": f"No files to upload (total files: {total_files})"}
         
         uploaded_files = []
         created_folders_count = 0
-        
         # Get the base my-drive physical path
         site_path = get_site_path()
-        
         my_drive_path = os.path.join(site_path, 'public', 'files', 'my-drive',username)
         my_drive_base_path = os.path.join(site_path, "public", "files", "my-drive")
         print("created my_drive_path",my_drive_path)
@@ -1932,7 +1894,7 @@ def create_nested_folder_structure1(folder_str,my_drive_path,username):
 
                 print(f"Created File folder: {folder_name}")
             
-                # Check and create Drive Manager folder auto after inserting file doctype
+                # Check and create Drive Manager folder auto after_inserting in file doctype
                 drive_folder_exist = frappe.db.get_value("Drive Manager", {
                     "attached_to_name": existing_file_folder,
                     "is_folder": 1,
@@ -2236,12 +2198,6 @@ def finalize_upload(upload_id, file_name, total_chunks, folder):
         "folder": folder,
         "total_uploaded": 1
     }
-
-
-
-    
-
-
 
 
 

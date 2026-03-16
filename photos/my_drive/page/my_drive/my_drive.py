@@ -10,7 +10,6 @@ def render_template(owner,folder):
     if not drive_access:
         frappe.throw(_("You do not have access to this drive. Please contact your administrator."))
         return
-
     if frappe.session.user == "Administrator":
         user_details = {'employee_name':"Administrator","designation":"Administrator","standard_img":"A"}
         last_login = frappe.get_value("User",{"first_name":owner},['last_active'],as_dict = True) or {}
@@ -19,7 +18,6 @@ def render_template(owner,folder):
         user_details['last_login'] = updated_user_login
     else:
         user_details = frappe.get_value("Employee",{"prefered_email":owner},['employee_name','designation'],as_dict = True) or {}
-        
         if not user_details:
             last_login = frappe.get_value("User",{"email":owner},['last_active','full_name'],as_dict = True) or {}
             initials = "".join([part[0] for part in last_login.full_name.strip().split()[:2]]).upper()
@@ -29,7 +27,6 @@ def render_template(owner,folder):
             user_details['standard_img'] = initials
             user_details['designation'] = owner
             user_details['employee_name'] = last_login.full_name
-
         else:
             last_login = frappe.get_value("User",{"email":owner},['last_active'],as_dict = True) or {}
             initials = "".join([part[0] for part in user_details.employee_name.strip().split()[:2]]).upper()

@@ -51,69 +51,35 @@ def create_file(username):
         })
         folder.insert(ignore_permissions=True)
 
-    return folder
+        return folder
 
-    if not frappe.db.exists("File", parent_folder):
-        parent = frappe.new_doc("File")
-        parent.file_name = username
-        parent.is_folder = 1
-        parent.folder = "Home"
-        parent.insert(ignore_permissions=True)
+    # if not frappe.db.exists("File", parent_folder):
+    #     parent = frappe.new_doc("File")
+    #     parent.file_name = username
+    #     parent.is_folder = 1
+    #     parent.folder = "Home"
+    #     parent.insert(ignore_permissions=True)
 
-    file = frappe.new_doc("File")
-    file.file_name = username
-    file.is_folder = 1
-    file.folder = parent_folder
-    file.insert(ignore_permissions=True, ignore_if_duplicate=True)
+    # file = frappe.new_doc("File")
+    # file.file_name = username
+    # file.is_folder = 1
+    # file.folder = parent_folder
+    # file.insert(ignore_permissions=True, ignore_if_duplicate=True)
 
-    return file
-
-
-
-# def create_file(username):
-#     file = frappe.new_doc("File")
-#     file.file_name = username
-#     file.is_folder = 1
-#     file.folder = f"Home/{username}"
-#     file.insert(ignore_if_duplicate=True)
-#     print("user folder created in File Doctype",file)
-#     return file
-
-    # file_doc = frappe.get_doc({
-    #     "doctype": "File",
-    #     "file_name": username,
-    #     "folder": "Home",
-    #     "is_private": 0,  # Make it public so it can be accessed via URL
-    # })
-    # file_doc.insert()
-    # frappe.msgprint(str("username folder created successfully"))
-	
-
-    # Create Drive Manager document
-    # dm = frappe.get_doc({
-    #     "doctype": "Drive Manager",
-    #     "file_name": filename,
-    #     "created_by": frappe.session.user,
-    #     "folder": folder,
-    #     "attached_to_name": file_doc.name
-    # })
-
-    # dm.flags.ignore_permissions = True
-    # dm.insert()
+    # return file
 
 
-import os
-from frappe.utils.file_manager import save_file
-from frappe.utils import get_site_path
-from frappe.utils import now
+
+
+
 
 @frappe.whitelist()
-def upload_file_to_my_drive():
+def upload():
     """Custom file upload handler that saves files to My Drive folder with nested folder support"""
     try:
         # Get the uploaded file
         file = frappe.request.files.get('file')
-        print("file", file)
+        print(  "line no:116 file : ", file)
         if not file:
             frappe.throw("No file uploaded")
         
@@ -125,19 +91,22 @@ def upload_file_to_my_drive():
         site_path = get_site_path()
         print("site_path", site_path)   #./final.clubs
         username = frappe.db.get_value("User",frappe.session.user,"username")
+        user_folder = f"{folder}/{username}"
         print("username",username)
+        print("user_folder",user_folder)
+
         my_drive_path = os.path.join(site_path, 'public', 'files','my-drive',username)
         print("my_drive_path", my_drive_path) # ./final.clubs/public/files/my-drive
         my_drive_base_path = os.path.join(site_path, "public", "files", "my-drive")
 
 
-        # if not os.path.exists(my_drive_path):
-        #     os.makedirs(my_drive_path)
-        os.makedirs(my_drive_path, exist_ok=True)
+        if not os.path.exists(my_drive_path):
+            os.makedirs(my_drive_path)
+        # os.makedirs(my_drive_path, exist_ok=True)
         
         target_folder_path = my_drive_path
         
-        if folder and folder != 'My Drive':
+        if folder:
             folder_parts = folder.split('/')
             if folder_parts[0].lower() == 'home':
                 folder_parts = folder_parts[1:]
@@ -149,7 +118,7 @@ def upload_file_to_my_drive():
                         os.makedirs(target_folder_path)
                         print(f"Created folder: {target_folder_path}")
         
-        print("target_folder_path", target_folder_path) #./final.clubs/public/files/my-drive
+        print("target_folder_path", target_folder_path) #./localhub.commit.io/public/files/my-drive/kim_wexler
         
         filename = file.filename
         file_path = os.path.join(target_folder_path, filename)
@@ -168,41 +137,48 @@ def upload_file_to_my_drive():
         
         # Save the file physically
         file.save(file_path)
-        
-        
         relative_path = os.path.relpath(file_path, my_drive_base_path)
         print("relative path",relative_path)
         file_url = f"/files/my-drive/{relative_path.replace(os.sep, '/')}"
         print("the final file url is ",file_url)
-        frappe.flags.ignore_file_size_limit = True
-			
-        # Create the file URL relative to the my-drive folder
-        # Calculate the relative path from my-drive folder
-        # relative_path = os.path.relpath(file_path, my_drive_path)
-        # file_url = f"/files/my-drive/{relative_path.replace(os.sep, '/')}"
-        # print("file_url", file_url)
+
+        # frappe.flags.ignore_file_size_limit = True
+
+        print("the folder where file is getting upload ", user_folder)
+       
         
         # Create File document in Frappe
         file_doc = frappe.get_doc({
             "doctype": "File",
             "file_name": filename,
             "file_url": file_url,
-            "folder": folder,
-            "is_private": 0,  # Make it public so it can be accessed via URL
+            "folder": user_folder,
         })
-        file_doc.insert()
+        file_doc.insert(ignore_permissions=True)
 
         # Create Drive Manager document
-        dm = frappe.get_doc({
-            "doctype": "Drive Manager",
-            "file_name": filename,
-            "created_by": frappe.session.user,
-            "folder": folder,
-            "attached_to_name": file_doc.name
-        })
+        try:
+            dm = frappe.get_doc({
+                "doctype": "Drive Manager",
+                "file_name": filename,
+                "created_by": frappe.session.user,
+                "folder": user_folder,
+                "attached_to_name": file_doc.name
+            })
 
-        dm.flags.ignore_permissions = True
-        dm.insert()
+            dm.flags.ignore_permissions = True
+            dm.insert(ignore_permissions=True)
+        except Exception as drive_error:
+            frappe.log_error(
+                title="Drive Manager Creation Failed",
+                message=frappe.as_json({
+                    "traceback": frappe.get_traceback(),
+                    "target_folder": user_folder,
+                    "file_id": file.name
+                })
+            )
+            print(f"Drive document creation failed: {str(drive_error)}")
+            drive_id = "Not Created"
 
         uploaded_files = []
         # tags = frappe.db.sql(query,as_dict=1)
@@ -214,7 +190,7 @@ def upload_file_to_my_drive():
             "drive_id": dm.name,
             "file_name": filename,
             "file_url": file_url,
-            "folder": folder,
+            "folder": user_folder,
             "physical_path": file_path,
             "created_by": frappe.session.user
         })
@@ -227,8 +203,6 @@ def upload_file_to_my_drive():
 		}
         audit_log = make_audit_dict(audit_log)
 
-
-
         if uploaded_files:
             create_audit_log(audit_log)
             return {
@@ -236,17 +210,7 @@ def upload_file_to_my_drive():
                 "uploaded_files":uploaded_files,
                 "folder":folder,
                 "total_uploaded": len(uploaded_files)
-            }
-        
-        # return {
-        #     "file_url": file_url,
-        #     "file_name": filename,
-        #     "file_type": file.content_type,
-        #     "file_id": file_doc.name,
-        #     "drive_id": dm.name,
-        #     "folder_path": target_folder_path
-        # }
-    
+            }    
     except Exception as e:
         frappe.log_error(f"File upload error: {str(e)}")
         frappe.throw(f"Error uploading file: {str(e)}")
@@ -254,3 +218,7 @@ def upload_file_to_my_drive():
 
 
         
+
+
+
+

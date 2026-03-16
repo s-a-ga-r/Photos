@@ -11,6 +11,7 @@
       return;
     }
     if (currentRoute !== "Workspaces/Document Management") {
+      $(".btn-reset.sidebar-toggle-btn").remove();
       if (previousRoute == "my-drive-v2") {
         window.location.reload();
         return;
@@ -19,4 +20,4 @@
     previousRoute = currentRoute;
   });
 })();
-//# sourceMappingURL=photos.bundle.SGH44742.js.map
+//# sourceMappingURL=photos.bundle.BDRCGA7T.js.map

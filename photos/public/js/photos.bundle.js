@@ -58,6 +58,8 @@ frappe.router.on('change', () => {
 
     if (currentRoute !=="Workspaces/Document Management"){
 
+       $('.btn-reset.sidebar-toggle-btn').remove();
+
         if (previousRoute =="my-drive-v2"){
             // console.log("currentRoute",currentRoute);
             window.location.reload();

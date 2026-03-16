@@ -135,7 +135,7 @@ const MyDriveV3 = {
 			},
 			callback: (r) => {
 				if (r.message) {
-					// console.log("renderTemplate responce", r.message);
+					console.log("renderTemplate responce", r.message);
 
 					this.handlePermissions(r.message.files) // globel permissions
 
@@ -1389,7 +1389,7 @@ const MyDriveV3 = {
 
 				var xhr = new XMLHttpRequest();
 				// Update the endpoint to your custom upload handler
-				xhr.open("POST", "/api/method/photos.file_utils.upload_file_to_my_drive", true);
+				xhr.open("POST", "/api/method/photos.file_utils.upload", true);
 				xhr.setRequestHeader("Accept", "application/json");
 				xhr.setRequestHeader("X-Frappe-CSRF-Token", frappe.csrf_token);
 
@@ -1687,6 +1687,10 @@ const MyDriveV3 = {
 				console.log("Server response:", response);
 
 				if (response.message && response.message.success) {
+
+					console.log();
+					
+
 					let files = response.message.uploaded_files;
 					let folder = response.message.folder;
 					let folders = response.message.uploaded_folders;
@@ -2307,7 +2311,7 @@ const MyDriveV3 = {
 						<div class="file-header">
 							<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id=${file.file_id} data-docname=${file.drive_id}>
 						</div>
-						<a href="#" class="open-folder" data-folder-name="${file.file_id}" data-drive-id="${file.drive_id}" data-is-shared=${file.shared}>
+						<a href="#" class="open-folder" data-folder-name="${file.file_id}" data-drive-id="${file.drive_id}" data-is-shared=${file.shared} data-is-admin=${file.drive_admin}>
 							<span class="corner"></span>
 								<div class="file-body">
 									<svg class="icon" style="width: 71px; height: 75px" aria-hidden="true">
@@ -2493,27 +2497,24 @@ const MyDriveV3 = {
 			console.log("⚪ self.folders_array", self.folders_array)
 			console.log("⚪ length of self.folders_array", self.folders_array.length)
 			
-
 			let folder_path = $(this).data("folder-name");
 			let drive_id = $(this).data("drive-id");
 			let shared = $(this).data("is-shared");
+			let admin = $(this).data("is-admin");
 
-			// console.log("ISSSS SHAREDDDDD",shared);
-			
 			const folder_array = folder_path.split("/");
 			const folder = folder_array[folder_array.length - 1]
 
 			console.log("okay The folder :",folder);
 			
-
-
 			let limit_start = 0;
 			let limit_page_length = 20;
 
 			if (self.folders_array.includes(folder)) {
 				console.log("⚪ In If, Yes folder in Folder_array")
-				console.log("⚪ opened folder :", folder)
-				console.log("⚪ Is-Shared:", shared)
+				// console.log("⚪ opened folder :", folder)
+				// console.log("⚪ Is-Shared:", shared)
+				// console.log("⚪ Is-admin:", admin)
 
 
 				$(this).nextAll().remove();
@@ -2538,12 +2539,13 @@ const MyDriveV3 = {
 				self.current_folder = folder_path
 
 				history.pushState({ folder: folder_path }, "", newUrl);
-				self.FolderContent(drive_id,shared,limit_start, limit_page_length)
+				self.FolderContent(drive_id,shared,admin,limit_start, limit_page_length)
 				self.BackButton()
 			} else {
 				console.log("⚪ In else, No folder in Folder_array")
-				console.log("⚪ opened folder :", folder)
-				console.log("⚪ Is Shared:", shared)
+				// console.log("⚪ opened folder :", folder)
+				// console.log("⚪ is shared:", shared)
+				// console.log("⚪ is admin:", admin)
 
 				console.log("⚪ Drive Id:", drive_id)
 				console.log("⚪ folder_path :", folder_path)
@@ -2572,12 +2574,13 @@ const MyDriveV3 = {
 					folder_array.forEach(folder => {
 						console.log("okay folder", folder)
 						console.log("⚪ Is Shared:", shared)
+						console.log("⚪ Is-admin:", admin)
 
 						console.log("and the drive_id", drive_id)
 
 						// console.log("okay folder array",self.folders_array)
 						let new_folder_path = make_folderPath(folder_path, folder)
-						let add_folder = `<a href="#" class="open-folder" data-folder-name="${new_folder_path}" data-drive-id=${drive_id} data-is-shared=${shared}>${folder}</a>`
+						let add_folder = `<a href="#" class="open-folder" data-folder-name="${new_folder_path}" data-drive-id=${drive_id} data-is-shared=${shared} data-is-admin=${admin}>${folder}</a>`
 
 						if (folder == "Home") {
 							// console.log("if folde is home called");
@@ -2595,12 +2598,12 @@ const MyDriveV3 = {
 
 				} else {
 					console.log("No 'Folders' link found.");
-					let add_folder = `<a href="#" class="open-folder" data-folder-name="${folder_path}" data-drive-id=${drive_id} data-is-shared=${shared}>${folder}</a>`
+					let add_folder = `<a href="#" class="open-folder" data-folder-name="${folder_path}" data-drive-id=${drive_id} data-is-shared=${shared} data-is-admin=${admin}>${folder}</a>`
 					breadcrumb.append(`&nbsp/&nbsp;${add_folder}`);
 				}
 				self.current_folder = folder_path
 				history.pushState({ folder: folder_path }, "", newUrl);
-				self.FolderContent(drive_id,shared,limit_start, limit_page_length)
+				self.FolderContent(drive_id,shared,admin,limit_start, limit_page_length)
 				// console.log("as well folder content");
 				self.BackButton()
 				console.log(`openFolder ENDS HERE... array of folder :- ${self.folders_array}`);
@@ -2608,7 +2611,9 @@ const MyDriveV3 = {
 		});
 	},
 
-	FolderContent(drive_id, shared, limit_start, limit_page_length) {
+	FolderContent(drive_id, shared, admin,limit_start, limit_page_length) {
+		console.log("folder ccontent", typeof admin);
+		
 		let self = this
 		console.log("get folder content for folder :", this.current_folder);
 		frappe.call({
@@ -2617,7 +2622,8 @@ const MyDriveV3 = {
 				folder: this.current_folder,
 				drive_id:drive_id,
 				shared:shared,
-				limit_start: limit_start,
+				admin:admin,
+				limit_start:limit_start,
 				limit_page_length: limit_page_length
 			},
 			callback: function (r) {
@@ -2657,7 +2663,7 @@ const MyDriveV3 = {
 									<div class="file-header">
 										<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id=${file.file_id} data-docname=${file.drive_id}>
 									</div>
-									<a href="#" class="open-folder" data-folder-name="${file.file_id}" data-drive-id=${file.drive_id} data-is-shared=${file.shared}>
+									<a href="#" class="open-folder" data-folder-name="${file.file_id}" data-drive-id=${file.drive_id} data-is-shared=${file.shared} data-is-admin=${file.shared}>
 										<span class="corner"></span>
 											<div class="file-body">
 												<svg class="icon" style="width: 71px; height: 75px" aria-hidden="true">
@@ -3908,21 +3914,15 @@ const MyDriveV3 = {
 			let tag_list = await frappe.xcall("photos.my_drive.page.my_drive_v2.my_drive_v2.get_person", {
 				file_id: file_id
 			});
-
 			console.log('tag_list :',tag_list);
-			
 			// frappe.msgprint(JSON.stringify(result))
-			
-
 			// if (tags) {
 			// 	tag_list = tags.split(",")
 			// 	console.log("tag_list :", tag_list);
 			// }
-
 			if (tag_list.length > 0) {
 				// Create a container for tags with proper styling
 				tag_html = `<div class="tag-container" style="margin-top: 8px;"><div class="tag-wrapper" style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">`
-				
 
 				tag_list.forEach((tag, index) => {
 					console.log("tag", tag, "index", index);
@@ -4119,8 +4119,6 @@ const MyDriveV3 = {
 
 				$parent.append(tag_input);
 				$parent.find('.tags-input').focus();
-
-				
 
 			});
 

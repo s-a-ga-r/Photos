@@ -8,7 +8,6 @@ import frappe
 if TYPE_CHECKING:
     from frappe.core.doctype.file.file import File
     from frappe.core.doctype.user.user import User
-
     from photos.photos.doctype.photo.photo import Photo
 
 
@@ -107,24 +106,16 @@ def get_file_dashboard(*args, **kwargs):
 def process_file(file: "File", event: str) -> "Photo":
     if event != "after_insert":
         raise NotImplementedError
-    
-
     if file.is_folder or not file.content_type.startswith("image"):
         return
-    
     if not file.content_type:
         return
-    
-    
     if not file.file_url.startswith("/files/my-drive/"):
         return
-    
     photo = frappe.new_doc("Photo")
     photo.photo = file.name
-
     frappe.msgprint(str("Processing file: {0}".format(file.name)))
-
-    return photo.save()
+    return photo.save(ignore_permissions=True)
 
 # Added by Sagar Patil
 import os
@@ -165,7 +156,7 @@ def create_user(user:"User",event:str):
         drv_access = frappe.new_doc("Drive Access")
         drv_access.user = user.email
         drv_access.view_only = 1
-        frappe.msgprint(str("{0} Created Folder Successfully".format(user.email)))
+        # frappe.msgprint(str("{0} Created Folder Successfully".format(user.email)))
 
         return drv_access.save()
     except LinkValidationError:
