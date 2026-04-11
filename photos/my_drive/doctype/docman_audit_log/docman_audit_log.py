@@ -10,7 +10,7 @@ class DocManAuditLog(Document):
 	pass
 
 def make_audit_dict(log):
-    print("audit_log",log)
+    # print("audit_log",log)
     # print(log['session_user'])
     # audit_log = {}
     if log['opration'] == "View":
@@ -77,9 +77,9 @@ def create_audit_log(audt_log):
     today = frappe.utils.getdate()
 
     file_type = frappe.get_value("File",audt_log['file_id'],"file_type")
-    print("file type is",file_type)
-    print("audt_log is",audt_log)
-    print("audt_log title",audt_log['title'])
+    # print("file type is",file_type)
+    # print("audt_log is",audt_log)
+    # print("audt_log title",audt_log['title'])
   
     if audt_log['opration'] == "View":
         existing_log = frappe.db.get_value(
@@ -93,13 +93,24 @@ def create_audit_log(audt_log):
             "name"
         )
         if existing_log:
-            doc = frappe.get_doc("DocMan Audit Log", existing_log)
+            # doc = frappe.get_doc("DocMan Audit Log", existing_log)
+            # doc.view_count = (doc.view_count or 0) + 1
+            # doc.last_viewed_on = frappe.utils.now()
+            # doc.flags.ignore_permissions = True
+            # doc.save()
 
-            doc.view_count = (doc.view_count or 0) + 1
-            doc.last_viewed_on = frappe.utils.now()
+            ''' 
+                above code giving error on second call like When doc.save() is called in rapid succession the first request updates the modified timestamp,
+                causing the second request to fail because its internal "copy" of the document now has an outdated timestamp.
+            '''
 
-            doc.flags.ignore_permissions = True
-            doc.save()
+            current_count = frappe.db.get_value("DocMan Audit Log", existing_log, "view_count") or 0
+            # frappe.db. do not check permissions 
+            frappe.db.set_value("DocMan Audit Log", existing_log, {
+                "view_count": current_count + 1,
+                "last_viewed_on": frappe.utils.now()
+            }, update_modified=True)
+
 
         else:
             # ➕ CREATE new log

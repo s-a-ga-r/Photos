@@ -9,7 +9,8 @@
   "user",
   "view_only",
   "upload_only",
-  "all"
+  "all",
+  "owned"
  ],
  "fields": [
   {
@@ -36,11 +37,19 @@
    "fieldname": "all",
    "fieldtype": "Check",
    "label": "All"
+  },
+  {
+   "default": "0",
+   "depends_on": "eval:doc.user == \"Administrator\"",
+   "fieldname": "owned",
+   "fieldtype": "Check",
+   "label": "Owned",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-07-19 16:06:58.882974",
+ "modified": "2026-03-31 11:05:04.608662",
  "modified_by": "Administrator",
  "module": "My Drive",
  "name": "Drive Access",
@@ -60,6 +69,7 @@
    "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": []

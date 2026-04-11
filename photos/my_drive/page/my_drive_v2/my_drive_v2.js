@@ -6,6 +6,15 @@ frappe.pages['my-drive-v2'].on_page_load = function (wrapper) {
 		
 	});
 
+
+	// Toggle Button for Administrator
+	if (frappe.session.user == "Administrator"){
+		render_toggle()
+	}
+
+
+	
+
 	const sidebar_button = `<button class="btn-reset sidebar-toggle-btn" aria-label="Toggle Sidebar" data-original-title="" title="">
 					<svg class="es-icon icon-md sidebar-toggle-placeholder"><use href="#es-line-align-justify"></use></svg>
 					<span class="sidebar-toggle-icon">
@@ -23,23 +32,6 @@ frappe.pages['my-drive-v2'].on_page_load = function (wrapper) {
 
 	MyDriveV3.init(page);
 
-	// $(wrapper).on('hide', function() {
-	// 	$('.my-drive-sidebar-btn').remove();
-	// 	$(document).off('click', '.my-drive-sidebar-btn');
-	// 	$(document).off('dblclick', '.my-drive-sidebar-btn');
-	// 	$('.file-view').off('mouseleave mouseenter');
-		
-	// 	// 🎯 IMPORTANT: Reset sidebar state for other pages
-	// 	$('.layout-side-section').removeAttr('style'); // Remove inline styles
-	// 	$('.list-sidebar').removeClass('opened');
-	// });
-
-	// $(wrapper).on('hide', function() {
-	// 	$('.sidebar-toggle-btn').remove();
-	// 	$(document).off('click', '.sidebar-toggle-btn');
-	// 	$(document).off('dblclick', '.sidebar-toggle-btn');
-	// 	$('.file-view').off('mouseleave mouseenter');
-	// });
 }
 const MyDriveV3 = {
 	
@@ -48,6 +40,9 @@ const MyDriveV3 = {
 		this.permissions = []
 		this.current_folder = "Home"
 		this.folders_array = ["Home"]
+		this.user_base_folder = null
+		this.toggle_value = null
+		
 		// console.log(frappe.session.user, "user");
 		frappe.db.get_value("Drive Access", { "user": frappe.session.user }, ['view_only', 'upload_only', 'all'])
 			.then(r => {
@@ -74,10 +69,7 @@ const MyDriveV3 = {
 		this.Home();
 		this.Exelpreview()
 		this.search_engine()
-
-		// this.sidebar_button();
-		// this.user_info()
-
+		this.Toggle()
 	},
 
 	async driveAccess() {
@@ -92,7 +84,7 @@ const MyDriveV3 = {
 			this.newFolder()
 			this.render_template(); // For checking i added here this line today Nov 17 at 6 pm
 		} else if (this.drive_access.upload_only == 1) {
-			await frappe.xcall("photos.file_utils.create_user_folder", {
+			await frappe.xcall("photos.file_utils.create_user_folder",{
 				user: frappe.session.user
 			});
 			this.uploadFile()
@@ -109,6 +101,8 @@ const MyDriveV3 = {
 	},
 
 	render_template() {
+		console.log("✅ Rendering Template");
+
 		// this.page.set_title(__(this.current_folder));
 		if (window.location.pathname !== "/app/my-drive-v2") {
 			console.log("window.location was ", window.location.pathname);
@@ -121,7 +115,6 @@ const MyDriveV3 = {
 		// this.folders_array.push(this.current_folder)
 		
 		this.permissions.length = 0
-
 		console.log(this.current_folder)
 		let limit_start = 0;
 		let limit_page_length = 20
@@ -137,10 +130,35 @@ const MyDriveV3 = {
 				if (r.message) {
 					console.log("renderTemplate responce", r.message);
 
+					this.user_base_folder=r.message.user_base_folder
+
 					this.handlePermissions(r.message.files) // globel permissions
+
+
+					console.log("r.message.owned",r.message.owned);
+					
+
+
+					initializeToggle(r.message.owned)
 
 					$(".file-view").remove()
 					$(".layout-side-section").remove()
+
+					if (frappe.session.user == "Administrator"){
+						if (!$(".page-title .flex.title-area .toggle-switch-container").length) {
+							console.log("True inside the render toggle");
+							
+							render_toggle()
+							initializeToggle(r.message.owned)
+						}
+
+
+					}else{
+						remove_toggle()
+					}
+
+					
+
 
 					this.tags = r.message.tags || {};
 					// console.log("renderTemplate this.permissions", this.permissions);
@@ -162,7 +180,6 @@ const MyDriveV3 = {
 					// $(".row").empty()
 					// $(".page-container").empty()
 					// $('.layout-main-section-wrapper').remove();
-
 					// $(frappe.render_template("my_drive", context)).appendTo(this.page.main);					
 
 					$(frappe.render_template("my_drive_v2", context)).appendTo($(this.page.main).closest('.row.layout-main'));
@@ -195,18 +212,77 @@ const MyDriveV3 = {
 		// $(frappe.render_template("my_drive_v3", context)).appendTo($(this.page.main).parent());     but this didnt work
 	},
 
+	Toggle(){
+
+		let self = this
+		console.log("inside toggle");
+		$(document).off("click", ".toggle-btn").on("click", ".toggle-btn", function (event) {
+			console.log("✅ Toggle clicked");
+			$(".toggle-btn").removeClass("active");
+			// Add active class to clicked button
+			$(this).addClass("active");
+			// Get the selected value
+			const selectedValue = $(this).attr("data-value");
+			console.log("Selected:", selectedValue);
+			self.toggle_value = selectedValue
+			// Trigger your Frappe filter logic here
+			// filterByOwnership(selectedValue);
+			if (selectedValue === 'owned') {
+				// $(".main-section").css({   add coloer in toggles button later
+				// 	"background-color": "#ede6e6"
+				// });
+				console.log("current folder",self.current_folder);
+				frappe.xcall("photos.my_drive.page.my_drive_v2.my_drive_v2.get_owned_data", {
+					owner: frappe.session.user,
+					folder:self.current_folder,
+					limit_start : 0,
+					limit_page_length :20
+				}).then(r => {
+					console.log(r);
+					if(r){
+						let files = r
+						console.log("owned files",files);
+						console.log("user_base_folder",self.user_base_folder);
+						frappe.db.set_value("Drive Access", frappe.session.user, {
+							owned:1
+						}).then(() => {
+							self.render_template();
+							// emptyState()
+							self.handlePermissions(files)
+							// self.FileUI(files);
+							self.all_files(files)
+						});
+					}
+				});
+
+				// Filter for owned items
+				console.log('Filtering owned items');
+			} else {
+				// Filter for others' items
+				console.log('Filtering others items',frappe.session.user);
+				// frappe.db.set_value('Drive Access',frappe.session.user, 'owned',false);
+				// frappe.db.set_value("Drive Access",frappe.session.user,"owned",0)
+
+				frappe.db.set_value("Drive Access", frappe.session.user, {
+					owned: 0
+				}).then(() => {
+					self.render_template();	
+				});
+				// self.render_template()
+			}
+		})
+	},
+
+
 	search_engine() {
 		let self = this
-
 		$(document).on("keyup", "input[data-element='search']", frappe.utils.debounce(function () {
+			console.log("⚪ Serching...");
 
 			let keyword = $(this).val().trim();
-
 			let limit_start = 0
 			let limit_page_length = 20
-
 			if (!keyword) {
-
 				frappe.call({
 					method: "photos.my_drive.page.my_drive_v2.my_drive_v2.get_all_files",
 					args: {
@@ -246,8 +322,6 @@ const MyDriveV3 = {
 				}
 			});
 		}, 300)); // debounce: run only after 300ms pause in typing
-
-
 	},
 
 	sidebar_button() {
@@ -260,6 +334,8 @@ const MyDriveV3 = {
 
 		// 🖱️ Single click → toggle show/hide
 		$(document).on("click", ".sidebar-toggle-btn", function () {
+			console.log("✅ sidebar clicked");
+
 			if (sidebarLocked) return;
 			let sidebar = $(".layout-side-section");
 			let innerSidebar = $(".list-sidebar");
@@ -275,6 +351,8 @@ const MyDriveV3 = {
 
 		// 🖱️ Double click → lock/unlock
 		$(document).on("dblclick", ".sidebar-toggle-btn", function () {
+			console.log("✅ sidebar clicked");
+
 			sidebarLocked = !sidebarLocked;
 			let icon = $(".sidebar-toggle-btn .lock-icon");
 
@@ -457,17 +535,30 @@ const MyDriveV3 = {
 		let self = this
 		let shareButton = null; // Keep reference to the button
 		let deleteButton = null;
-		let downloadBtn =null
+		let downloadBtn =null;
 		$(document).on("change", ".checkbox", () => {
+			console.log("✅ checkbox checked");
+
 			const anyChecked = $(".checkbox:checked").length > 0;
 			if (anyChecked) {
 				let selectedFiles = this.getSelectedFiles(); // Move this inside the if block
 				console.log("selected fils", selectedFiles)
 				console.log("permissions :", self.permissions);
-				let matchedPermissions = self.permissions.filter(p => selectedFiles.some(f => f.drive_id === p.drive_id));
+				// let matchedPermissions = self.permissions.filter(p => selectedFiles.some(f => f.drive_id === p.drive_id));
+
+				let matchedPermissions = self.permissions.filter(p => selectedFiles.some(f => f.drive_id === p.drive_id))
+					.map(p=> {
+						// Find the corresponding object in the 'selected' array
+						const extraData = selectedFiles.find(f => f.drive_id === p.drive_id);
+						
+						// Return a new object combining the permission and the extra data
+						return { ...p, ...extraData };
+				});
+
 				console.log("matched ", matchedPermissions);
 
-				if (!shareButton && matchedPermissions.some(p => p.create === 1 || p.share === 1)) {
+
+				if (!shareButton && matchedPermissions.some(p => p.create === 1 || p.share === 1 || p.admin === 1)) {
 					shareButton = self.page.add_inner_button(__('Share'), () => {
 						let currentSelectedFiles = self.getSelectedFiles(); // Get fresh data when button is clicked
 						if (currentSelectedFiles.length > 0) {
@@ -485,7 +576,8 @@ const MyDriveV3 = {
 				// console.log("selected file", selectedFiles);
 
 
-				if (!deleteButton && matchedPermissions.some(p => p.create === 1 || p.delete === 1)) {
+				if (!deleteButton && matchedPermissions.some(p => p.create === 1 || p.delete === 1 || p.admin === 1)) {
+					
 					deleteButton = self.page.add_inner_button(__('Delete'), () => {
 						let currentSelectedFiles = this.getSelectedFiles(); // Get fresh data when button is clicked
 						if (currentSelectedFiles.length > 0) {
@@ -501,7 +593,7 @@ const MyDriveV3 = {
 
 				}
 
-				if (!downloadBtn && matchedPermissions.some(p => p.create === 1 || p.download === 1)) {
+				if (!downloadBtn && matchedPermissions.some(p => p.create === 1 || p.download === 1 || p.admin === 1)) {
 					downloadBtn = self.page.add_inner_button(__('Download'), () => {
 						let currentSelectedFiles = this.getSelectedFiles(); // Get fresh data when button is clicked
 						if (currentSelectedFiles.length > 0) {
@@ -537,12 +629,14 @@ const MyDriveV3 = {
 		let selectedFiles = [];
 		$('input[type="checkbox"]:checked.checkbox').each(function () {
 			let file_id = $(this).data('file-id');
-			let drive_id = $(this).data('docname');
+			let drive_id = $(this).data('drive-id');
+			let admin = $(this).data('is-admin');
 			// console.log("docname", docname);
 			// console.log("filename", filename);
 			var fileData = {
 				"file_id": file_id,
 				"drive_id": drive_id,
+				"admin":admin
 			};
 			selectedFiles.push(fileData);
 		});
@@ -565,74 +659,64 @@ const MyDriveV3 = {
 	},
 
 	deleteFile(selectedFiles) {
+		console.log("✅ Deleting Files...");
+
 		let self = this
 		console.log("delete ? file id's : ", selectedFiles);
+		console.log("length of file",$('.result.file-grid-view .file-grid .file').length);
 		if (selectedFiles.length !== 0) {
 			frappe.confirm("Are you sure you want to delete this file?", function () {
 				frappe.call({
 					method: "photos.my_drive.page.my_drive_v2.my_drive_v2.delete_bulk_items",
 					args: { bulk_files: JSON.stringify(selectedFiles) },
 					callback: function (r) {
-
 						console.log("delete_bulk_items responce :", r.message)
-
 						if (r.message && Array.isArray(r.message)) {
 							console.log("deleting file...", r.message[0])
-
 							let successCount = 0;
 							r.message.forEach((item, index) => {
 								if (item.status === "Success" && item.is_folder) {
-
 									setTimeout(() => {
 										// Check what's actually in the DOM
 										console.log("All checkboxes with data-drive-id:");
 										$('input[data-drive-id]').each(function () {
 											console.log("  -", $(this).attr('data-drive-id'));
 										});
-
 										console.log("All links with data-folder-name:");
 										$('.open-folder[data-folder-name]').each(function () {
 											console.log("  -", $(this).attr('data-folder-name'));
 										});
-
 										// Try to find the element
 										const $fileBox = $(`input[data-file-id="${item.file_id}"]`).closest(".file");
 										console.log("Found file box:", $fileBox.length);
 										console.log("$fileBox element:", $fileBox);
-
 										if ($fileBox.length > 0) {
 											console.log("if");
-
 											$fileBox.fadeOut(150, function () {
 												$(this).remove();
 											});
-
-											if ($(".result.file-grid-view .file-grid.file").length === 0) {
-												console.log("in if if");
-												console.log(".file-grid has no files OR does not exist");
-												// emptyState()
-												// self.uploadButton()
-											} else {
-												console.log("else part file still there");
-												console.log($(".result.file-grid-view .file-grid"));
-											}
+											console.log($('.result.file-grid-view .file-grid').length);
+											console.log($('.result.file-grid-view .file-grid'));
+											console.log($('.result.file-grid-view .file-grid .file').length);
+											console.log($('.result.file-grid-view .file-grid .file'))
 										} else {
 											console.error("Element not found!");
 											console.log("else")
-
-
 										}
 
+										if($('.result.file-grid-view .file-grid .file').length === 1){ 
+											// length is true on 1 beacuse after delete all filebox the last .file still remain there so length not get 0 
+											console.log("NO file's in file-grid");
+											emptyState()
+											self.uploadButton()
+										}
+
+										console.log("Outside the if-else file.length : ",$('.result.file-grid-view .file-grid .file').length);
+
 									}, index * 300);
-									console.log("hello im here first bcos of setTime out");
-
-
-
+									console.log("Outside the setTimeout file.length : ",$('.result.file-grid-view .file-grid .file').length);
 								} else if (item.status === "Success" && !item.is_folder) {
-
-									console.log(("In the success "));
-									
-
+									console.log(("In Else status : Success "));
 									setTimeout(() => {
 										const $imagefileBox = $(`.image-preview[data-drive-id="${item.drive_id}"]`).closest(".file");
 										const $pdffileBox = $(`.open-pdf[data-drive-id="${item.file_id}"]`).closest(".file");
@@ -654,22 +738,15 @@ const MyDriveV3 = {
 										$videofileBox.fadeOut(150, function () {
 											$(this).remove();
 										});
-
-
-
 									}, index * 500);
 									successCount++;
-
 									console.log("vanished... and it is not folder")
 
-									if ($(".result.file-grid-view").length && $(".result.file-grid-view .file-grid .file").length === 0) {
-										console.log(".file-grid has no files OR does not exist");
+									if($('.result.file-grid-view .file-grid .file').length === 1){
+										console.log("NO file's in file-grid");
 										emptyState()
 										self.uploadButton()
 									}
-
-
-
 								} else {
 									frappe.msgprint(`Failed to delete drive_id: ${item.drive_id}`);
 								}
@@ -697,6 +774,7 @@ const MyDriveV3 = {
 	},
 
 	share(selectedFiles) {
+		console.log("✅ Sharing Files...");
 		let usersData = [];
 		let shareDialog = new frappe.ui.Dialog({
 			title: __('Share Files'),
@@ -1071,14 +1149,9 @@ const MyDriveV3 = {
 	},
 
 	handlePermissions(files) {
-
-		// console.log("Handling permission",files);
-		
 		let self = this
-		// this.permissions.length = 0
-
+		console.log("⚪ Handling Permissions...");
 		files.forEach(p => {
-
 			let permissions = {
 				file_id: p.file_id,
 				drive_id: p.drive_id,
@@ -1090,12 +1163,8 @@ const MyDriveV3 = {
 				share: p.share ? 1 : 0,
 				create: frappe.session.user === p.created_by ? 1 : 0,
 			}
-
 			self.permissions.push(permissions);
-			
 		});
-
-		// console.log("Handled the Permissions:", self.permissions)
 	},
 
 	// uploadFile() {
@@ -1180,46 +1249,170 @@ const MyDriveV3 = {
 	// },
 
 
+
+
 	// this below function was uploadLarge() => uploadFile because of error 
+
+	/////////////////////// this was final ///////////////////
 	
+	// uploadFile() {
+	// 	let self = this
+	// 	// button name was Upload Big File Upload File=>
+	// 	this.page.add_action_item(__('<i class="fa fa-file"></i> Upload File'), async function () {
+	// 		try {
+	// 			const input = document.createElement("input");
+	// 			input.type = "file";
+	// 			input.onchange = async function () {
+	// 				const file = input.files[0];
+	// 				const folder = self.current_folder;
+	// 				const chunkSize = 4 * 1024 * 1024; // 4MB
+	// 				const totalChunks = Math.ceil(file.size / chunkSize);
+	// 				const uploadId = frappe.utils.get_random(10);
+
+	// 				let finalResponse = null;
+
+	// 				for (let i = 0; i < totalChunks; i++) {
+	// 					const chunk = file.slice(
+	// 						i * chunkSize,
+	// 						(i + 1) * chunkSize
+	// 					);
+
+	// 					let formData = new FormData();
+	// 					// formData.append("file", chunk);
+	// 					formData.append("file", chunk);
+	// 					formData.append("file_name", file.name);
+	// 					formData.append("chunk_index", i);
+	// 					formData.append("total_chunks", totalChunks);
+	// 					formData.append("folder", folder);
+	// 					formData.append("upload_id", uploadId);
+
+	// 					const res = await fetch("/api/method/photos.my_drive.page.my_drive_v2.my_drive_v2.upload_file_chunk",
+	// 						{
+	// 							method: "POST",
+	// 							headers: {
+	// 								"X-Frappe-CSRF-Token": frappe.csrf_token
+	// 							},
+	// 							body: formData
+	// 						}
+	// 					);
+	// 					try {
+	// 						const json = await res.json();
+	// 						if (json?.message?.success) {
+	// 							finalResponse = json.message;
+	// 							console.log("finalResponse",finalResponse);
+	// 						}
+	// 					} catch (e) {
+	// 						console.log("error",e);
+	// 						// Non-final chunks won't return JSON → ignore
+	// 					}
+
+	// 					let percent = Math.round(((i + 1) / totalChunks) * 100);
+	// 					console.log(`Uploading ${percent}%`);
+
+	// 					frappe.show_progress(__("Uploading ") + file.name, percent);
+
+
+	// 					// frappe.show_progress(__("Uploading File"),percent,__(`Uploading ${percent}%`),true);
+	// 				}
+
+	// 				if (finalResponse && finalResponse.success) {
+	// 					const files = finalResponse.uploaded_files;
+	// 					const folder = finalResponse.folder;
+
+	// 					$(".empty-state-1").remove();
+
+	// 					self.handlePermissions(files);
+						
+	// 					self.makeURL(folder);
+	// 					self.BackButton();
+	// 					self.FileUI(files);
+
+	// 					frappe.show_alert({
+	// 						message: __("File uploaded successfully"),
+	// 						indicator: "green"
+	// 					});
+	// 				}
+
+	// 				frappe.hide_progress();
+
+	// 				frappe.show_alert("Upload completed");
+	// 			};
+	// 			input.click();
+	// 		} catch (e) {
+	// 			frappe.hide_progress();
+	// 			frappe.msgprint({
+	// 				title: __("Upload Failed"),
+	// 				message: e.message || __("Something went wrong"),
+	// 				indicator: "red"
+	// 			});
+	// 		}
+	// 	});
+
+		
+	// },
+
+
 	uploadFile() {
 		let self = this
-		// button name was Upload Big File Upload File=>
 		this.page.add_action_item(__('<i class="fa fa-file"></i> Upload File'), async function () {
+			console.log("✅ Uploading File...");
+
+
+			let user_base_folder = await frappe.xcall("photos.utils.get_user_folder", {
+				user: frappe.session.user,
+				folder:"Home"
+			});
+			console.log('user_base_folder :',user_base_folder);
+			// console.log("current_folder : ", self.current_folder);
+			let parentFolder = self.current_folder
+			if (self.current_folder === "Home"){
+				parentFolder = `${self.current_folder}/${user_base_folder}`
+				// console.log("parent_folder : ",parentFolder);
+			}else{
+				console.log("the current folder is not Home so need to creat parentfolder here ",self.current_folder);
+				return
+			}
+
 			try {
 				const input = document.createElement("input");
 				input.type = "file";
 				input.onchange = async function () {
 					const file = input.files[0];
-					const folder = self.current_folder;
+					const folder = parentFolder;
 					const chunkSize = 4 * 1024 * 1024; // 4MB
-					const totalChunks = Math.ceil(file.size / chunkSize);
-					const uploadId = frappe.utils.get_random(10);
+					console.log("chunkSize",chunkSize);
+					console.log("file_size",file.size);
+					console.log("folder",folder);
 
+
+					const totalChunks = Math.ceil(file.size / chunkSize);
+					console.log("totalchuncks",totalChunks);
+					const uploadId = frappe.utils.get_random(10);
 					let finalResponse = null;
 
-					for (let i = 0; i < totalChunks; i++) {
-						const chunk = file.slice(
-							i * chunkSize,
-							(i + 1) * chunkSize
-						);
+					if (file.size <= chunkSize){
+						console.log("file size less than chunkSize");
+						console.log("file",file);
+						
 
-						let formData = new FormData();
-						// formData.append("file", chunk);
-						formData.append("file", chunk);
-						formData.append("file_name", file.name);
-						formData.append("chunk_index", i);
-						formData.append("total_chunks", totalChunks);
-						formData.append("folder", folder);
-						formData.append("upload_id", uploadId);
+						// var xhr = new XMLHttpRequest();
+						// Update the endpoint to your custom upload handler
+						// xhr.open("POST", "/api/method/photos.file_utils.upload", true);
+						// xhr.setRequestHeader("Accept", "application/json");
+						// xhr.setRequestHeader("X-Frappe-CSRF-Token", frappe.csrf_token);
 
-						const res = await fetch("/api/method/photos.my_drive.page.my_drive_v2.my_drive_v2.upload_file_chunk",
+						let form_data = new FormData();
+						form_data.append("file", file, file.name);
+						form_data.append("folder", folder);
+
+
+						const res = await fetch("/api/method/photos.file_utils.upload",
 							{
 								method: "POST",
 								headers: {
 									"X-Frappe-CSRF-Token": frappe.csrf_token
 								},
-								body: formData
+								body: form_data
 							}
 						);
 						try {
@@ -1233,15 +1426,56 @@ const MyDriveV3 = {
 							// Non-final chunks won't return JSON → ignore
 						}
 
-						let percent = Math.round(((i + 1) / totalChunks) * 100);
-						console.log(`Uploading ${percent}%`);
+						console.log("form data send to server", form_data);
+					}else{
+						for (let i = 0; i < totalChunks; i++) {
+							const chunk = file.slice(
+								i * chunkSize,
+								(i + 1) * chunkSize
+							);
 
-						frappe.show_progress(__("Uploading ") + file.name, percent);
+							console.log("what is the chunk",chunk);
+							let formData = new FormData();
+							// formData.append("file", chunk);
+							formData.append("file", chunk)
+							formData.append("file_name", file.name);
+							formData.append("chunk_index", i);
+							formData.append("total_chunks", totalChunks);
+							formData.append("folder", folder);
+							formData.append("upload_id", uploadId);
+
+							const res = await fetch("/api/method/photos.my_drive.page.my_drive_v2.my_drive_v2.upload_file_chunk",
+								{
+									method: "POST",
+									headers: {
+										"X-Frappe-CSRF-Token": frappe.csrf_token
+									},
+									body: formData
+								}
+							);
+							try {
+								const json = await res.json();
+								if (json?.message?.success) {
+									finalResponse = json.message;
+									console.log("finalResponse",finalResponse);
+								}
+							} catch (e) {
+								console.log("error",e);
+								// Non-final chunks won't return JSON → ignore
+							}
+
+							let percent = Math.round(((i + 1) / totalChunks) * 100);
+							console.log(`Uploading ${percent}%`);
+							frappe.show_progress(__("Uploading ") + file.name, percent);
+							// frappe.show_progress(__("Uploading File"),percent,__(`Uploading ${percent}%`),true);
+						}
 
 
-						// frappe.show_progress(__("Uploading File"),percent,__(`Uploading ${percent}%`),true);
 					}
 
+					console.log("finalResponse",finalResponse);
+					
+					
 					if (finalResponse && finalResponse.success) {
 						const files = finalResponse.uploaded_files;
 						const folder = finalResponse.folder;
@@ -1252,6 +1486,7 @@ const MyDriveV3 = {
 						
 						self.makeURL(folder);
 						self.BackButton();
+						self.fileGrid()
 						self.FileUI(files);
 
 						frappe.show_alert({
@@ -1347,7 +1582,7 @@ const MyDriveV3 = {
 					
 					self.makeURL(folder);
 					self.BackButton();
-					self.FileUI(files);
+					self.all_files(files);
 
 					frappe.show_alert({
 						message: __("File uploaded successfully"),
@@ -1374,7 +1609,7 @@ const MyDriveV3 = {
 		console.log("upload button called")
 		let self = this
 		$(document).off("click", "#upload-file").on("click", "#upload-file", function (event) {
-			console.log("called")
+			console.log("✅ Upload Button Clicked...");
 			// this.uploadFile()
 			var file_input = document.createElement("input");
 			file_input.type = "file";
@@ -1406,7 +1641,19 @@ const MyDriveV3 = {
 						if (response.message.success) {
 							let files = response.message.uploaded_files
 							let folder = response.message.folder
-							self.handlePermissions(files)
+
+							// let permissions = {
+							// 	file_id: p.file_id,
+							// 	drive_id: p.drive_id,
+							// 	read: p.read ?? 0,
+							// 	write: p.write ?? 0,
+							// 	upload: p.upload ?? 0,
+							// 	delete: p.delete_file ?? 0,
+							// 	download: p.download ?? 0,
+							// 	share: p.share ? 1 : 0,
+							// 	create: frappe.session.user === p.created_by ? 1 : 0,
+							// }
+							// self.handlePermissions(files)
 							// console.log("uploading files",response.message.uploaded_files);
 							// console.log(`response files :${files}`);
 							// console.log(`response folders : ${folder}`);
@@ -1440,8 +1687,19 @@ const MyDriveV3 = {
 
 	newFolder() {
 		let self = this
-		this.page.add_action_item(__(' <i class="fa fa-plus"></i> New Folder'), function () {
-			console.log("current_folder : ", self.current_folder);
+		this.page.add_action_item(__(' <i class="fa fa-plus"></i> New Folder'), async function () {
+			console.log("✅ New Folder Clicked...");
+			let user_base_folder = await frappe.xcall("photos.utils.get_user_folder", {
+				user: frappe.session.user
+			});
+			console.log('user_base_folder :',user_base_folder);
+			// console.log("current_folder : ", self.current_folder);
+			let parentFolder = self.current_folder
+			if (self.current_folder === "Home"){
+				parentFolder = `${self.current_folder}/${user_base_folder}`
+				// console.log("parent_folder : ",parentFolder);
+			}
+			
 			frappe.prompt(
 				__("Name"),
 				(values) => {
@@ -1451,51 +1709,69 @@ const MyDriveV3 = {
 					}
 					const data = {
 						file_name: values.value,
-						folder: self.current_folder || "Home", // Default folder
+						folder:parentFolder, // Default folder
 					};
-					console.log(values.value);
+					console.log("folder_name : ",values.value);
 					frappe.call({
 						method: "frappe.core.api.file.create_new_folder",
 						args: data,
 						callback: function (response) {
 							if (response.message) {
+
+								// console.log("before permissions",self.permissions.length);
 								console.log(response.message);
 								let file_id = response.message.name
 								let file_name = response.message.file_name
-								console.log(file_id, file_name);
-								$(".frappe-list .no-result").remove();
 
-								if ($(".frappe-list result").length > 0) {
-									console.log(".no-result already exists.");
-								} else {
-									console.log(".no-result not found — creating it...");
+								console.log("result length :",$(".frappe-list .result .file-grid").length);
 
-									// create and append your no-result box
-									$(".frappe-list").append(`
-										<div class="result file-grid-view">
-											<div class="file-grid"></div>
-										</div>
-									`);
-								}
+								
+
+								// if ($(".frappe-list .no-result")){
+								// 	$(".frappe-list .no-result").remove();
+
+								// 	$(".frappe-list").append(`
+								// 		<div class="result file-grid-view">
+								// 			<div class="file-grid"></div>
+								// 		</div>
+								// 	`);
+								// 	console.log("file-grid", "created");
+								// }
+
+
+								
+								// if ($(".frappe-list result").length > 0) {
+								// 	console.log(".no-result already exists.");
+								// } else {
+								// 	console.log(".no-result not found — creating it...");
+
+								// 	// create and append your no-result box
+								// 	$(".frappe-list").append(`
+								// 		<div class="result file-grid-view">
+								// 			<div class="file-grid"></div>
+								// 		</div>
+								// 	`);
+								// }
 
 								frappe.db.get_value('Drive Manager', { 'attached_to_name': file_id }, "name")
 									.then(r => {
 										if (r.message) {
-											console.log("got drive_id ", r.message)
-											let fileContainer = document.querySelector(".file-grid"); // Adjust selector as needed
+											let drive_id = r.message.name
+											self.handlePermissions([{file_id:file_id,drive_id:drive_id,created_by:frappe.session.user}])
+
+											let fileContainer = document.querySelector(".file-grid"); // <div class="file-grid"></div>
 											let newFileBox = document.createElement("div");
 											newFileBox.className = "file";
 											newFileBox.innerHTML = `
 											<div class="file-header">
-												<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id=${file_id} data-drive-id=${r.message.name}>
+												<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id=${file_id} data-drive-id=${drive_id} data-is-admin=${0}>
 											</div>
-											<a href="#" class="open-folder" data-folder-name="${file_id}">
+											<a href="#" class="open-folder" data-folder-name="${file_id}" data-drive-id="${drive_id}" data-is-shared=${0} data-is-admin=${0}>
 												<span class="corner"></span>
 													<div class="file-body">
 														<svg class="icon" style="width: 71px; height: 75px" aria-hidden="true">
 															<use href="#icon-folder-normal-large"></use>
 														</svg>
-										
 														</div>
 												<div class="file-name">
 													${file_name}
@@ -1513,7 +1789,7 @@ const MyDriveV3 = {
 
 								setTimeout(() => {
 									frappe.show_alert({
-										message: __('Folder {0} created successfully! inside {1}', [values.value, self.current_folder]),
+										message: __('Folder {0} created successfully! inside {1}', [values.value, parentFolder]),
 										indicator: 'green'
 									}, 3);
 								}, 700);
@@ -1522,6 +1798,7 @@ const MyDriveV3 = {
 
 								// frappe.msgprint(__("Folder '{0}' created successfully", [values.value]));
 							}
+							self.fileGrid()
 						},
 						error: function (err) {
 							frappe.msgprint(__("Error creating folder: {0}", [err.message]));
@@ -1535,6 +1812,7 @@ const MyDriveV3 = {
 	},
 
 	makeURL(folder) {
+		console.log("⚪ Make Url...");
 		// let self = this
 		console.log(`making URL for :${folder} nd the current folder ${this.current_folder}`);
 		this.current_folder = folder;
@@ -1561,6 +1839,7 @@ const MyDriveV3 = {
 	uploadFolder() {
 		let self = this;
 		this.page.add_action_item(__('<i class="fa fa-folder"></i> Upload Folder'), function () {
+			console.log("✅ Upload Folder Clicked...");
 			var folder_input = document.createElement("input");
 			folder_input.type = "file";
 			folder_input.accept = ".pdf, .xls, .xlsx, .doc, .docx, .png, .jpg, .jpeg, .gif";
@@ -1644,9 +1923,23 @@ const MyDriveV3 = {
 		};
 	},
 
-	sendNestedFolderToServer(folderData) {
+	async sendNestedFolderToServer(folderData) {
+		console.log("⚪ Nested Folder To Server");
 		let self = this;
-		let baseFolderName = self.current_folder;
+		let user_base_folder = await frappe.xcall("photos.utils.get_user_folder", {
+			user: frappe.session.user
+		});
+		console.log('user_base_folder :',user_base_folder);
+		// console.log("current_folder : ", self.current_folder);
+		let parentFolder = self.current_folder
+		if (self.current_folder === "Home"){
+			parentFolder = `${self.current_folder}/${user_base_folder}`
+			console.log("baseFolderName : ",parentFolder);
+		}
+
+		let baseFolderName = parentFolder;
+
+
 
 		// Create FormData for multiple files and folder structure
 
@@ -1658,6 +1951,7 @@ const MyDriveV3 = {
 		let form_data = new FormData();
 		form_data.append("top_folder", top_level); // Top-level folder
 		form_data.append("base_folder", baseFolderName);
+		form_data.append("user_folder", user_base_folder);
 		form_data.append("total_files", folderData.files.length);
 		form_data.append("total_folders", folderData.folderPaths.length);
 
@@ -1706,13 +2000,15 @@ const MyDriveV3 = {
 					self.completeAllUploads(uploadDialog, files.length, createdFolders);
 
 					// console.log(`Successfully created ${createdFolders} folders and uploaded ${files.length} files`);
-
+					console.log("folder (base_top_folder)",folder);
 					console.log("folders",folders);
 					console.log("created folders",createdFolders);
-					
+
 					let folder_path = folder;
 					let folder_array = folder_path.split("/");
 					let foldername = folder_array[folder_array.length - 1]
+
+					// check folder_dict with foldername js console and what the hell is going on
 
 					self.handlePermissions(files_folders);
 
@@ -2175,29 +2471,22 @@ const MyDriveV3 = {
 	},
 
 	fileGrid() {
+		console.log("⚪ file Grid");
 
 		if ($(".frappe-list .no-result").length > 0) {
 			console.log(".no-result already exists.");
-
 			$(".frappe-list .no-result").remove();      // remove empty state here which means add file-grid
-
-
 			if ($($(".result.file-grid-view").length && $(".result.file-grid-view .file-grid .file")).length > 0) {
 				console.log("if");
-
 				console.log("files exist");
-
 			} else {
 				console.log("else");
-
 				$(".frappe-list").append(`
 					<div class="result file-grid-view">
 						<div class="file-grid"></div>
 					</div>`
 				);
-
 				return
-
 			}
 
 		} else if ($(".result.file-grid-view .file-grid .file").length === 0) {
@@ -2227,6 +2516,7 @@ const MyDriveV3 = {
 
 	FileUI(files) {
 		let self = this;
+		console.log("⚪ file UI");
 
 		let fileContainer = document.querySelector(".file-grid");
 		const allowedTypes = ["pdf", "xls", "xlsx", "doc", "docx"];
@@ -2269,9 +2559,9 @@ const MyDriveV3 = {
 						newFileBox.className = "file";
 						newFileBox.innerHTML = `
 								<div class="file-header">
-									<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id="${file.file_id}" data-docname="${file.drive_id}">
+									<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id="${file.file_id}" data-drive-id="${file.drive_id}">
 								</div>
-								<a href="#"  class="${linkClass}" data-file-url="${file.file_url}" data-name="${file.file_id}">
+								<a href="#"  class="${linkClass}" data-file-url="${file.file_url}"data-file-id="${file.file_id}" data-drive-id="${file.drive_id}">
 									<span class="corner"></span>
 									<div class="file-body">
 										<img alt="File Icon" style="width: 77px; height: 90px" class="icon" src="${iconSrc}">
@@ -2289,7 +2579,7 @@ const MyDriveV3 = {
 						newFileBox.className = "file";
 						newFileBox.innerHTML = `
 							<div class="file-header">
-								<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id="${file.file_id}" data-docname="${file.drive_id}">
+								<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id="${file.file_id}" data-drive-id="${file.drive_id}">
 							</div>
 							<a href="#" class="image-preview" data-file-url="${file.file_url}" data-file-id="${file.file_id}" data-drive-id="${file.drive_id}">
 								<span class="corner"></span>
@@ -2309,7 +2599,7 @@ const MyDriveV3 = {
 					newFileBox.classList.add("file");
 					newFileBox.innerHTML = `
 						<div class="file-header">
-							<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id=${file.file_id} data-docname=${file.drive_id}>
+							<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id=${file.file_id} data-drive-id=${file.drive_id}>
 						</div>
 						<a href="#" class="open-folder" data-folder-name="${file.file_id}" data-drive-id="${file.drive_id}" data-is-shared=${file.shared} data-is-admin=${file.drive_admin}>
 							<span class="corner"></span>
@@ -2319,7 +2609,7 @@ const MyDriveV3 = {
 									</svg>
 								</div>
 							<div class="file-name">
-								${file.file_name}
+								"${file.file_name}"
 								<br>
 								<small>Just now</small>
 							</div>
@@ -2362,6 +2652,7 @@ const MyDriveV3 = {
 	},
 
 	all_files(files) {
+		console.log("⚪ All file");
 		let self = this
 		// const folders = data.filter(file => file.is_folder);
 		// const files = data.filter(file => !file.is_folder);
@@ -2383,7 +2674,7 @@ const MyDriveV3 = {
 					newFileBox.classList.add("file");
 					newFileBox.innerHTML = `
 						<div class="file-header">
-							<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id=${file.file_id} data-docname=${file.drive_id}>
+							<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id=${file.file_id} data-drive-id=${file.drive_id}>
 						</div>
 						<a href="#" class="open-folder" data-folder-name="${file.file_id}">
 							<span class="corner"></span>
@@ -2429,7 +2720,7 @@ const MyDriveV3 = {
 						newFileBox.className = "file";
 						newFileBox.innerHTML = `
 							<div class="file-header">
-								<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id="${file.file_id}" data-docname="${file.drive_id}">
+								<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id="${file.file_id}" data-drive-id="${file.drive_id}">
 							</div>
 							<a href="#"  class="${linkClass}" data-file-url="${file.file_url}" data-name="${file.file_id}">
 								<span class="corner"></span>
@@ -2449,7 +2740,7 @@ const MyDriveV3 = {
 						newFileBox.className = "file";
 						newFileBox.innerHTML = `
 							<div class="file-header">
-								<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id="${file.file_id}" data-docname="${file.drive_id}">
+								<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id="${file.file_id}" data-drive-id="${file.drive_id}">
 							</div>
 							<a href="#" class="image-preview" data-file-url="${file.file_url}" data-file-id="${file.file_id}" data-drive-id="${file.drive_id}">
 								<span class="corner"></span>
@@ -2483,7 +2774,6 @@ const MyDriveV3 = {
 				console.log(`File ${index + 1}/${files.length} added ${file.file_name} to UI`);
 
 			});
-
 		}
 	},
 
@@ -2492,12 +2782,20 @@ const MyDriveV3 = {
 		let self = this;
 		// Use event delegation - attach one listener to a parent element
 		$(document).off("click", ".open-folder").on("click", ".open-folder", function (event) {
+			let folder_path = $(this).data("folder-name");
+			console.log("✅ Clicked open-folder :",folder_path);
 			event.preventDefault();  // Prevent default behavior
-			$('.ellipsis').show(); //this ellipsis is back, share, delete button's container 
+			$('.ellipsis').show(); //this ellipsis is back, share, delete button's container
+
 			console.log("⚪ self.folders_array", self.folders_array)
 			console.log("⚪ length of self.folders_array", self.folders_array.length)
+
+			// $(".toggle-switch-container").remove()
+
+			remove_toggle()
+
 			
-			let folder_path = $(this).data("folder-name");
+			
 			let drive_id = $(this).data("drive-id");
 			let shared = $(this).data("is-shared");
 			let admin = $(this).data("is-admin");
@@ -2511,11 +2809,10 @@ const MyDriveV3 = {
 			let limit_page_length = 20;
 
 			if (self.folders_array.includes(folder)) {
-				console.log("⚪ In If, Yes folder in Folder_array")
+				console.log("⚪If, Yes folder in Folder_array")
 				// console.log("⚪ opened folder :", folder)
 				// console.log("⚪ Is-Shared:", shared)
 				// console.log("⚪ Is-admin:", admin)
-
 
 				$(this).nextAll().remove();
 				const targetElement = folder;
@@ -2543,14 +2840,14 @@ const MyDriveV3 = {
 				self.BackButton()
 			} else {
 				console.log("⚪ In else, No folder in Folder_array")
-				// console.log("⚪ opened folder :", folder)
+				console.log("⚪ opened folder :", folder)
 				// console.log("⚪ is shared:", shared)
 				// console.log("⚪ is admin:", admin)
 
-				console.log("⚪ Drive Id:", drive_id)
-				console.log("⚪ folder_path :", folder_path)
-				console.log("self.current_folder means last folder_path :", self.current_folder)
-				console.log("split folders from folder_path", folder_array)
+				// console.log("⚪ Drive Id:", drive_id)
+				// console.log("⚪ folder_path :", folder_path)
+				// console.log("self.current_folder means last folder_path :", self.current_folder)
+				// console.log("split folders from folder_path", folder_array)
 				self.folders_array.push(folder)
 
 				console.log(`Pushed ${folder} In self.folders_array `);
@@ -2597,7 +2894,7 @@ const MyDriveV3 = {
 					});
 
 				} else {
-					console.log("No 'Folders' link found.");
+					console.log("No 'Folders' link in breadcrumb found.");
 					let add_folder = `<a href="#" class="open-folder" data-folder-name="${folder_path}" data-drive-id=${drive_id} data-is-shared=${shared} data-is-admin=${admin}>${folder}</a>`
 					breadcrumb.append(`&nbsp/&nbsp;${add_folder}`);
 				}
@@ -2612,8 +2909,7 @@ const MyDriveV3 = {
 	},
 
 	FolderContent(drive_id, shared, admin,limit_start, limit_page_length) {
-		console.log("folder ccontent", typeof admin);
-		
+		console.log("✅ FolderContent :", this.current_folder);		
 		let self = this
 		console.log("get folder content for folder :", this.current_folder);
 		frappe.call({
@@ -2656,17 +2952,18 @@ const MyDriveV3 = {
 						// fileDisplayArea.innerHTML = `<p class="center">This folder is empty. Upload files here.</p>`;
 					} else {
 						files.forEach(file => {
+							// Folders
 							if (file.is_folder) {
 								let fileElement = document.createElement("div");
 								fileElement.classList.add("file");
 								fileElement.innerHTML = `
 									<div class="file-header">
-										<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id=${file.file_id} data-docname=${file.drive_id}>
+										<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id="${file.file_id}" data-drive-id=${file.drive_id}>
 									</div>
-									<a href="#" class="open-folder" data-folder-name="${file.file_id}" data-drive-id=${file.drive_id} data-is-shared=${file.shared} data-is-admin=${file.shared}>
+									<a href="#" class="open-folder" data-folder-name="${file.file_id}" data-drive-id=${file.drive_id} data-is-shared=${file.shared} data-is-admin=${file.admin}>
 										<span class="corner"></span>
 											<div class="file-body">
-												<svg class="icon" style="width: 71px; height: 75px" aria-hidden="true">
+												<svg class="icon" style="width: 71px; height:75px" aria-hidden="true">
 													<use href="#icon-folder-normal-large"></use>
 												</svg>
 											</div>
@@ -2688,14 +2985,16 @@ const MyDriveV3 = {
 								}
 								$(".file-grid").append(fileElement);
 							} else {
+								// EXCEL's
 								if (file.file_type === "XLSX" || file.file_type === "XLS" || file.file_type === "CSV") {
+									
 									let fileElement = document.createElement("div");
 									fileElement.classList.add("file");
 									fileElement.innerHTML = `
 										<div class="file-header">
-												<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id=${file.file_id} data-docname=${file.drive_id}>
+												<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id=${file.file_id} data-drive-id=${file.drive_id}>
 										</div>
-										<a href="#" class="open-spreadsheet" data-file-url="${file.file_url}" data-file-id=${file.file_id}>
+										<a href="#" class="open-spreadsheet" data-file-url="${file.file_url}" data-file-id=${file.file_id} data-drive-id=${file.drive_id}>
 											<span class="corner"></span>
 											
 											<div class="file-body">
@@ -2710,11 +3009,12 @@ const MyDriveV3 = {
 									`;
 									$(".file-grid").append(fileElement);
 								} else if (file.file_type === "PDF") {
+									// PDF'S
 									let fileElement = document.createElement("div");
 									fileElement.classList.add("file");
 									fileElement.innerHTML = `
 												<div class="file-header">
-													<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id=${file.file_id} data-docname=${file.drive_id}>
+													<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id=${file.file_id} data-drive-id=${file.drive_id}>
 												</div>
 												<a href="#" class="open-pdf" data-file-url="${file.file_url}" data-file-id=${file.file_id}>
 													<span class="corner"></span>
@@ -2731,14 +3031,14 @@ const MyDriveV3 = {
 										`;
 									$(".file-grid").append(fileElement);
 								} else {
-									// console.log("else part in open folder and image file id", file.file_id);
+									// Image's
 									let fileElement = document.createElement("div");
 									fileElement.classList.add("file");
 									fileElement.innerHTML = `
 											<div class="file-header">
-												<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id=${file.file_id} data-docname=${file.drive_id}>
+												<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id=${file.file_id} data-drive-id=${file.drive_id} data-is-admin=${file.admin}>
 											</div>
-											<a href="#" class="image-preview" data-file-url="${file.file_url}" data-file-id=${file.file_id} data-drive-id=${file.drive_id} data-tags="${file.persons}">
+											<a href="#" class="image-preview" data-file-url="${file.file_url}" data-file-id=${file.file_id} data-drive-id=${file.drive_id} data-tags="${file.persons}" data-is-admin=${file.admin}>
 												<span class="corner"></span>
 												<div class="image">
 													<img alt="image" class="img-responsive" src="${file.file_url}">
@@ -2764,9 +3064,13 @@ const MyDriveV3 = {
 	Shared() {
 		let self = this;
 		$(document).on("click", ".open-shared", function (event) {
+			console.log("✅ Shared");
 			event.preventDefault(); // ✅ stops browser from appending #
 
 			self.current_folder = "Shared";
+
+			remove_toggle()
+
 
 			let base_url = window.location.pathname
 			let newUrl = base_url.split("my-drive-v2")[0] + "my-drive-v2/" + self.current_folder;
@@ -2840,7 +3144,7 @@ const MyDriveV3 = {
 					console.log("callback return Shared files response:", r.message);
 
 
-					if(r.message){
+					if(r.message.length != 0){
 						self.handlePermissions(r.message)
 
 						r.message.forEach((item) => {
@@ -3026,6 +3330,8 @@ const MyDriveV3 = {
 							}
 						})
 
+					}else{
+						No_Files()
 					}
 
 				}
@@ -3042,7 +3348,10 @@ const MyDriveV3 = {
 		let self = this
 		$(document).off("click", ".go-folders");
 		$(document).on("click", ".go-folders", function (event) {
+			console.log("✅ Folders Clicked");
 			event.preventDefault(); // ✅ stops browser from appending #
+
+			remove_toggle()
 
 			self.current_folder = "Folders";
 			let base_url = window.location.pathname
@@ -3082,7 +3391,7 @@ const MyDriveV3 = {
 								let fileElement = document.createElement("div");
 								fileElement.classList.add("file");
 								fileElement.innerHTML = `
-								<a href="#" class="open-folder" data-folder-name="${file.file_id}" data-drive-id=${file.drive_id} data-is-shared=${file.shared}>
+								<a href="#" class="open-folder" data-folder-name="${file.file_id}" data-drive-id=${file.drive_id} data-is-shared=${file.shared} data-is-admin=${file.drive_admin}>
 									<span class="corner"></span>
 										<div class="file-body">
 											<svg class="icon" style="width: 71px; height: 75px" aria-hidden="true">
@@ -3106,8 +3415,6 @@ const MyDriveV3 = {
 									fileElement.insertBefore(badge, fileElement.querySelector("a"));
 								}
 
-
-
 								$(".file-grid").append(fileElement);
 
 							});
@@ -3126,6 +3433,7 @@ const MyDriveV3 = {
 
 
 	show_media_files(folder,limit_start, limit_page_length) {
+		console.log("✅ Show Media Files");
 		let self = this
 
 		console.log("folder",folder);
@@ -3142,12 +3450,11 @@ const MyDriveV3 = {
 			callback: function (r) {
 				if (r.message) {
 					self.handlePermissions(r.message.files)
-					
 					let files = r.message.files;
-
 					if (files.length === 0) {
 						// $(".frappe-list .no-result").remove();
-						emptyState()
+						// emptyState()
+						No_Files()
 					} else {
 						$(".frappe-list .result").remove();
 						$(".frappe-list .no-result").remove();
@@ -3161,9 +3468,9 @@ const MyDriveV3 = {
 							fileElement.classList.add("file");
 							fileElement.innerHTML = `
 								<div class="file-header">
-										<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id="${file.file_id}" data-docname="${file.drive_id}">
+										<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id="${file.file_id}" data-drive-id="${file.drive_id}" data-is-admin="${file.admin}>
 								</div>
-								<a href="#" class="image-preview" data-file-url="${file.file_url}" data-file-id="${file.file_id}" data-drive-id="${file.drive_id}">
+								<a href="#" class="image-preview" data-file-url="${file.file_url}" data-file-id="${file.file_id}" data-drive-id="${file.drive_id}" data-tags="${file.persons}" data-is-admin="${file.admin}">
 									<span class="corner"></span>
 									<div class="image">
 										<img alt="image" class="img-responsive" src="${file.file_url}">
@@ -3197,11 +3504,13 @@ const MyDriveV3 = {
 	Media() {
 		let self = this;
 		$(document).on("click", ".open-media", function (event) {
+			console.log("✅ open-media Clicked");
 			event.preventDefault();  // ✅ stops browser from appending #
 			self.current_folder = "Media";
 			self.page.set_title(__("Media"));
 
 			self.breadcrumb() // remove first `/` slashes
+			remove_toggle()
 
 			$(".standard-filter-section .level-item a").remove() // should remove, cause coming another sidebar option
 			let add_folder = `<a href="#">Media</a>`
@@ -3294,7 +3603,7 @@ const MyDriveV3 = {
 			// 					fileElement.classList.add("file");
 			// 					fileElement.innerHTML = `
 			// 							<div class="file-header">
-			// 									<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id="${file.file_id}" data-docname="${file.drive_id}">
+			// 									<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id="${file.file_id}" data-drive-id="${file.drive_id}">
 			// 							</div>
 			// 							<a href="#" class="image-preview" data-file-url="${file.file_url}" data-file-id="${file.file_id}">
 			// 								<span class="corner"></span>
@@ -3323,12 +3632,15 @@ const MyDriveV3 = {
 	Documents() {
 		let self = this;
 		$(document).on("click", ".open-documents", function (event) {
+			console.log("✅ open-documents Clicked");
 			event.preventDefault();  // ✅ stops browser from appending #
 			self.current_folder = "Documents";
 			self.page.set_title(__("Documents"));
 			console.log("clicked open documents");
 
 			self.breadcrumb()
+			remove_toggle()
+
 
 
 			$(".standard-filter-section .level-item a").remove()
@@ -3347,76 +3659,74 @@ const MyDriveV3 = {
 				args: { owner: frappe.session.user,limit_start:limit_start,limit_page_length:limit_page_length},
 				callback: function (r) {
 					if (r.message) {
-						console.log(r.message);
+						console.log("Documents",r.message);
 
 						
-						let permissions = r.message.files.map(file => {
-							if (frappe.session.user !== file.created_by && file.read === null && file.write === null && file.delete_file === null && file.download === null) {
+						// let permissions = r.message.files.map(file => {	
+						// 	if (frappe.session.user !== file.created_by && file.read === null && file.write === null && file.delete_file === null && file.download === null) {
 
-								const isCreator = frappe.session.user === file.created_by;
-								const ParentfolderPermissions = r.message.parent_folder_permission
+						// 		const isCreator = frappe.session.user === file.created_by;
+						// 		const ParentfolderPermissions = r.message.parent_folder_permission
 
-								const getpermissions = ParentfolderPermissions.map(per => {
-									console.log(per.write);
-									return {
-										filename: file.file_id,
-										read: per.read || 0,
-										write: per.write || 0,
-										download: per.download || 0,
-										delete: per.delete_file || 0,
-										create: isCreator
-									};
-								})
-								return getpermissions[0]
+						// 		const getpermissions = ParentfolderPermissions.map(per => {
+						// 			console.log(per.write);
+						// 			return {
+						// 				filename: file.file_id,
+						// 				read: per.read || 0,
+						// 				write: per.write || 0,
+						// 				download: per.download || 0,
+						// 				delete: per.delete_file || 0,
+						// 				create: isCreator
+						// 			};
+						// 		})
+						// 		return getpermissions[0]
 
-							} else {
-								// Use existing file permissions
-								return {
-									filename: file.file_id,
-									read: file.read,
-									write: file.write,
-									download: file.download,
-									delete: file.delete_file,
-									create: frappe.session.user === file.created_by ? 1 : 0
-								};
-							}
-						});
-						self.permissions = permissions
+						// 	} else {
+						// 		// Use existing file permissions
+						// 		return {
+						// 			filename: file.file_id,
+						// 			read: file.read,
+						// 			write: file.write,
+						// 			download: file.download,
+						// 			delete: file.delete_file,
+						// 			create: frappe.session.user === file.created_by ? 1 : 0
+						// 		};
+						// 	}
+						// });
+						// self.permissions = permissions
 						let files = r.message.files;
 
+						self.handlePermissions(files)
 
 
-
-						// fileDisplayArea.innerHTML = "";
-
+						
 						if (files.length === 0) {
 							$(".frappe-list .no-result").remove();
-							emptyState()
-							self.uploadButton()
+							No_Files()
+							// self.uploadButton() // added button in empty state
 							// fileDisplayArea.innerHTML = `<p class="center">This folder is empty. Upload files here.</p>`;
 						} else {
 
+							$(".frappe-list .result").remove();
+							$(".frappe-list").prepend('<div class="result file-grid-view"></div>');
+							$(".file-grid-view").append('<div class="file-grid"></div>')
+
+
 							files.forEach(file => {
 								console.log("documents files", file);
-								$(".frappe-list .result").remove();
-								$(".frappe-list").prepend('<div class="result file-grid-view"></div>');
-								$(".file-grid-view").append('<div class="file-grid"></div>')
-
-
-
-								let fileElement = document.createElement("div");
-								fileElement.classList.add("file");
-								if (file.file_type === "PDF") {
-
+								
+								if (file.file_type === "XLSX" || file.file_type === "XLS" || file.file_type === "CSV") {
+									let fileElement = document.createElement("div");
+									fileElement.classList.add("file");
 									fileElement.innerHTML = `
 										<div class="file-header">
-											<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id=${file.file_id} data-docname=${file.drive_id}>
+												<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id=${file.file_id} data-drive-id=${file.drive_id} data-is-admin=${file.drive_admin}>
 										</div>
-										<a href="#" class="open-pdf" data-file-url="${file.file_url}" data-name=${file.file_id}>
+										<a href="#" class="open-spreadsheet" data-file-url="${file.file_url}" data-file-id=${file.file_id} data-drive-id=${file.drive_id}>
 											<span class="corner"></span>
-
+											
 											<div class="file-body">
-												<img alt="File Icon" style="width: 77px; height: 90px" class="icon" src="/assets/photos/file.png">
+												<img alt="File Icon" style="width: 75px; height: 90px" class="icon" src="/assets/photos/xls.png">
 											</div>
 											<div class="file-name">
 												${file.filename}
@@ -3424,28 +3734,74 @@ const MyDriveV3 = {
 												<small>${file.creation}</small>
 											</div>
 										</a>
-									`
+									`;
 									$(".file-grid").append(fileElement);
-
-								} else if (file.file_type === "XLSX" || file.file_type === "XLS") {
+								} else if (file.file_type === "PDF") {
+									// PDF'S
+									let fileElement = document.createElement("div");
+									fileElement.classList.add("file");
 									fileElement.innerHTML = `
-											<div class="file-header">
-												<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id=${file.file_id} data-docname=${file.drive_id}>
-											</div>
-											<a href="#" class="open-spreadsheet" data-file-url="${file.file_url}" data-name=${file.file_id}>
-												<span class="corner"></span>
-												<div class="file-body">
-													<img alt="File Icon" style="width: 77px; height: 90px" class="icon" src="/files/file.png">
+												<div class="file-header">
+													<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id=${file.file_id} data-drive-id=${file.drive_id}>
 												</div>
-												<div class="file-name">
-													${file.filename}
-													<br>
-													<small>${file.creation}</small>
-												</div>
-											</a>
-										`
+												<a href="#" class="open-pdf" data-file-url="${file.file_url}" data-file-id=${file.file_id}>
+													<span class="corner"></span>
+
+													<div class="file-body">
+														<img alt="File Icon" style="width: 77px; height: 90px" class="icon" src="/assets/photos/file.png">
+													</div>
+													<div class="file-name">
+														${file.filename}
+														<br>
+														<small>${file.creation}</small>
+													</div>
+												</a>
+										`;
 									$(".file-grid").append(fileElement);
 								}
+
+								// let fileElement = document.createElement("div");
+								// fileElement.classList.add("file");
+								// if (file.file_type === "PDF") {
+
+								// 	// fileElement.innerHTML = `
+								// 	// 	<div class="file-header">
+								// 	// 		<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id=${file.file_id} data-drive-id=${file.drive_id}>
+								// 	// 	</div>
+								// 	// 	<a href="#" class="open-pdf" data-file-url="${file.file_url}" data-name=${file.file_id}>
+								// 	// 		<span class="corner"></span>
+
+								// 	// 		<div class="file-body">
+								// 	// 			<img alt="File Icon" style="width: 77px; height: 90px" class="icon" src="/assets/photos/file.png">
+								// 	// 		</div>
+								// 	// 		<div class="file-name">
+								// 	// 			${file.filename}
+								// 	// 			<br>
+								// 	// 			<small>${file.creation}</small>
+								// 	// 		</div>
+								// 	// 	</a>
+								// 	// `
+								// 	// $(".file-grid").append(fileElement);
+
+								// } else if (file.file_type === "XLSX" || file.file_type === "XLS") {
+								// 	fileElement.innerHTML = `
+								// 			<div class="file-header">
+								// 				<input class="level-item checkbox hidden-xs" type="checkbox" data-file-id=${file.file_id} data-drive-id=${file.drive_id}>
+								// 			</div>
+								// 			<a href="#" class="open-spreadsheet" data-file-url="${file.file_url}" data-name=${file.file_id}>
+								// 				<span class="corner"></span>
+								// 				<div class="file-body">
+								// 					<img alt="File Icon" style="width: 77px; height: 90px" class="icon" src="/assets/photos/xls.png">
+								// 				</div>
+								// 				<div class="file-name">
+								// 					${file.filename}
+								// 					<br>
+								// 					<small>${file.creation}</small>
+								// 				</div>
+								// 			</a>
+								// 		`
+								// 	$(".file-grid").append(fileElement);
+								// }
 
 							});
 						}
@@ -3459,9 +3815,8 @@ const MyDriveV3 = {
 	openNotification() {
 
 		$(document).off("click", ".open-notify").on("click", ".open-notify", function (event) {
-
+			console.log("✅ open-notify Clicked");
 			event.preventDefault(); // ✅ stops browser from appending #
-
 			// frappe.msgprint(JSON.stringify("Notification"))
 
 			let drive_id = $(this).data("drive-id");
@@ -3545,12 +3900,13 @@ const MyDriveV3 = {
 	Notifications() {
 		let self = this;
 		$(document).on("click", ".open-notifications", function (event) {
+			console.log("✅ open-notifications Clicked");
 			event.preventDefault(); // ✅ stops browser from appending #
 
 			if ($(".open-notifications .notification-badge").length) {
 				$(".notification-badge").remove();   // remove notification badge
 			}
-
+			remove_toggle()
 			self.current_folder = "Notifications";
 			let base_url = window.location.pathname
 			let newUrl = base_url.split("my-drive-v2")[0] + "my-drive-v2/" + self.current_folder;
@@ -3570,7 +3926,6 @@ const MyDriveV3 = {
 			$(".frappe-list .no-result").remove();
 
 			$(".frappe-list").prepend('<div class="result"></div>');
-
 
 			const header = `
 				<header class="level list-row-head text-muted">
@@ -3603,12 +3958,8 @@ const MyDriveV3 = {
 				</header>`
 			$(".result").prepend(header);
 
-
 			let limit_start = 0;
 			let limit_page_length = 20
-
-
-
 
 			frappe.call({
 				method: "photos.my_drive.page.my_drive_v2.my_drive_v2.get_shared_files",
@@ -3618,110 +3969,104 @@ const MyDriveV3 = {
 					limit_page_length:limit_page_length
 				},
 				callback: (r) => {
-					console.log("callback return Notifications files response:", r.message);
-					r.message.forEach((item) => {
+					console.log("callback return Notifications files response:",r.message);
+					if(r.message.length != 0){ 
+						r.message.forEach((item) => {
+								if (item.seen) {
+									const result = `
+										<div class="list-row-container" tabindex="1">
+											<div class="level list-row">
+												<div class="level-left ellipsis">
 
-							if (item.seen) {
-								const result = `
-									<div class="list-row-container" tabindex="1">
-										<div class="level list-row">
-											<div class="level-left ellipsis">
+													<div class="list-row-col ellipsis list-subject level">
+														<span class="level-item file-select">
+															<input class="list-row-checkbox" type="checkbox" data-name="739a2e765d" />
+														</span>
+														<span class="level-item ellipsis" title="Apple-Logo.png">
+															<a  href="#" class="ellipsis open-notify" data-file-id="${item.file_id}" data-drive-id=${item.drive_id} data-is-shared="1" title="Apple-Logo.png">
+																<svg class="icon icon-sm" style="" aria-hidden="true">
+																	<use class="" href="#icon-notification"></use>
+																</svg>
+																<span>${item.shared_by} shared a document file ${item.file_name} with you</span>
+															</a>
+														</span>
+													</div>
 
-												<div class="list-row-col ellipsis list-subject level">
-													<span class="level-item file-select">
-														<input class="list-row-checkbox" type="checkbox" data-name="739a2e765d" />
-													</span>
-													<span class="level-item ellipsis" title="Apple-Logo.png">
-														<a  href="#" class="ellipsis open-notify" data-file-id="${item.file_id}" data-drive-id=${item.drive_id} data-is-shared="1" title="Apple-Logo.png">
-															<svg class="icon icon-sm" style="" aria-hidden="true">
-																<use class="" href="#icon-notification"></use>
-															</svg>
-															<span>${item.shared_by} shared a document file ${item.file_name} with you</span>
-														</a>
-													</span>
-												</div>
+													<div class="list-row-col ellipsis hidden-xs text-muted">
+														<span></span>
+													</div>
 
-												<div class="list-row-col ellipsis hidden-xs text-muted">
-													<span></span>
+													<div class="list-row-col hidden-xs ellipsis">
+														<span class="indicator-pill green filterable no-indicator-dot ellipsis" data-filter="seen,=,0" title="Document is in draft state">
+															<span class="ellipsis">Seen</span>
+														</span>
+													</div>
+													
+													
+													<div class="list-row-col ellipsis hidden-xs text-muted">
+														<span>${item.file_type}</span>
+													</div>
 												</div>
-
-												<div class="list-row-col hidden-xs ellipsis">
-													<span class="indicator-pill green filterable no-indicator-dot ellipsis" data-filter="seen,=,0" title="Document is in draft state">
-														<span class="ellipsis">Seen</span>
-													</span>
-												</div>
-												
-												
-												<div class="list-row-col ellipsis hidden-xs text-muted">
-													<span>${item.file_type}</span>
-												</div>
-											</div>
-											<div class="level-right text-muted ellipsis">
-												<div class="level-item list-row-activity">
-													<span class="frappe-timestamp" data-timestamp="2025-10-25 21:22:41.500965" title="25-10-2025 21:22:41">${item.creation}</span>
-												</div>
-											</div>
-										</div>
-										<div class="list-row-border"></div>
-									</div>`
-								$(".result").append(result);
-
-							}else {
-
-								const result =`
-									<div class="list-row-container" tabindex="1">
-										<div class="level list-row">
-											<div class="level-left ellipsis">
-												<div class="list-row-col ellipsis list-subject level">
-													<span class="level-item file-select">
-														<input class="list-row-checkbox" type="checkbox" data-name="f662039d54" />
-													</span>
-													<span class="level-item ellipsis" title="Apple-Logo.png">
-														<a href="#" class="ellipsis open-notify" data-file-id="${item.file_id}" data-drive-id=${item.drive_id} data-is-shared="1" title="Apple-Logo.png">
-															<svg class="icon icon-sm" style="" aria-hidden="true">
-																<use class="" href="#icon-notification"></use>
-															</svg>
-															<span>${item.shared_by} shared a document file ${item.file_name} with you</span>
-															<i class="fa fa-lock fa-fw text-warning"></i>
-														</a>
-													</span>
-												</div>
-												<div class="list-row-col ellipsis hidden-xs text-muted">
-													<span></span>
-												</div>
-												<div class="list-row-col hidden-xs ellipsis">
-													<span class="indicator-pill red filterable no-indicator-dot ellipsis" data-filter="seen,=,0" title="Document is in draft state">
-														<span class="ellipsis"> Not Seen</span>
-													</span>
-												</div>
-												
-												<div class="list-row-col ellipsis hidden-xs text-muted">
-													<span>${item.file_type}</span>
-												</div>
-							
-											</div>
-											<div class="level-right text-muted ellipsis">
-												<div class="level-item list-row-activity">
-													<span class="frappe-timestamp" data-timestamp="2025-10-25 17:38:38.074578" title="25-10-2025 17:38:38">${item.creation}</span>
+												<div class="level-right text-muted ellipsis">
+													<div class="level-item list-row-activity">
+														<span class="frappe-timestamp" data-timestamp="2025-10-25 21:22:41.500965" title="25-10-2025 21:22:41">${item.creation}</span>
+													</div>
 												</div>
 											</div>
-										</div>
-										<div class="list-row-border"></div>
-									</div>`
+											<div class="list-row-border"></div>
+										</div>`
+									$(".result").append(result);
 
-									$(".result").append(result);							
-							}
-
-					})
-
-
-
-
+								}else {
+									const result =`
+										<div class="list-row-container" tabindex="1">
+											<div class="level list-row">
+												<div class="level-left ellipsis">
+													<div class="list-row-col ellipsis list-subject level">
+														<span class="level-item file-select">
+															<input class="list-row-checkbox" type="checkbox" data-name="f662039d54" />
+														</span>
+														<span class="level-item ellipsis" title="Apple-Logo.png">
+															<a href="#" class="ellipsis open-notify" data-file-id="${item.file_id}" data-drive-id=${item.drive_id} data-is-shared="1" title="Apple-Logo.png">
+																<svg class="icon icon-sm" style="" aria-hidden="true">
+																	<use class="" href="#icon-notification"></use>
+																</svg>
+																<span>${item.shared_by} shared a document file ${item.file_name} with you</span>
+																<i class="fa fa-lock fa-fw text-warning"></i>
+															</a>
+														</span>
+													</div>
+													<div class="list-row-col ellipsis hidden-xs text-muted">
+														<span></span>
+													</div>
+													<div class="list-row-col hidden-xs ellipsis">
+														<span class="indicator-pill red filterable no-indicator-dot ellipsis" data-filter="seen,=,0" title="Document is in draft state">
+															<span class="ellipsis"> Not Seen</span>
+														</span>
+													</div>
+													
+													<div class="list-row-col ellipsis hidden-xs text-muted">
+														<span>${item.file_type}</span>
+													</div>
+								
+												</div>
+												<div class="level-right text-muted ellipsis">
+													<div class="level-item list-row-activity">
+														<span class="frappe-timestamp" data-timestamp="2025-10-25 17:38:38.074578" title="25-10-2025 17:38:38">${item.creation}</span>
+													</div>
+												</div>
+											</div>
+											<div class="list-row-border"></div>
+										</div>`
+										$(".result").append(result);							
+								}
+						})
+					}else{
+						No_Files()
+					}
 				}
 
 			})
-
-
 
 			// const result = `
 
@@ -3884,7 +4229,6 @@ const MyDriveV3 = {
 			// $(".result").append(result);
 
 			self.openNotification()
-
 		})
 	},
 
@@ -3892,15 +4236,19 @@ const MyDriveV3 = {
 		let self = this
 		// console.log("Permissions before click image preview", this.permissions);
 		$(document).off("click", ".image-preview").on("click", ".image-preview", async function (event) {
+			console.log("✅ image-preview Clicked");
 			event.preventDefault();
 			let file_url = $(this).data("file-url");
 			let drive_id = $(this).data("drive-id");
 			let file_id = $(this).data("file-id");
+			let is_admin = $(this).data("is-admin");
 			let tags = $(this).data("tags");
 
 			console.log("file_url", file_url);
 			console.log("drive_id", drive_id);``
 			console.log("file_id", file_id);
+			console.log("is-admin", is_admin);
+
 			console.log("tags", tags);
 			console.log("permissions", self.permissions);
 
@@ -3946,7 +4294,7 @@ const MyDriveV3 = {
 								transition: opacity 0.2s;
 								display: flex;
 								align-items: center;
-							" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">
+							"onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">
 								<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 									<line x1="18" y1="6" x2="6" y2="18"></line>
 									<line x1="6" y1="6" x2="18" y2="18"></line>
@@ -3962,14 +4310,14 @@ const MyDriveV3 = {
 			} else {
 				console.log("taglist is empty");
 			}
-
+ 
 			let userPermission = self.permissions.find(permission => permission.file_id === file_id);
 
 			console.log("userPermission",userPermission);
 			
 
 			console.log("create", userPermission.create, "read", userPermission.read, "write", userPermission.write, "delete", userPermission.delete, "download", userPermission.download);
-			if (!userPermission.create && !userPermission.read && !userPermission.write) {
+			if (!userPermission.create && !userPermission.read && !userPermission.write && !is_admin) {
 				console.log("create", userPermission.create, ".read", userPermission.read, "write", userPermission.write, "delete", userPermission.delete, "download", userPermission.download);
 				frappe.msgprint("You do not have permission to view this file");
 				console.log("You do not have permission to view this file");
@@ -4477,8 +4825,7 @@ const MyDriveV3 = {
 
 	videoPreview() {
 		$(document).off("click", ".video-preview").on("click", ".video-preview", function (event) {
-			console.log("hello");
-			
+			console.log("✅ video-preview Clicked");			
 			event.preventDefault();
 			let file_url = $(this).data("file-url");
 			let drive_id = $(this).data("drive-id");
@@ -4545,10 +4892,145 @@ const MyDriveV3 = {
 
 	},
 
+	Home() {
+		let self = this
+		$(document).on("click", ".go-home", function (event) {
+			console.log("✅ go-home Clicked");
+
+			self.current_folder = "Home";
+			self.breadcrumb()
+			// $('.btn .ellipsis').hide();
+			$('.custom-actions .ellipsis').hide();
+
+			render_toggle()
+
+			self.render_template();
+			// self.page.set_title(__('Home'));
+			 // Reset current folder to Home
+			// history.pushState({ folder: "Home" }, "", "/app/my-drive-v2");
+			// document.querySelector('[data-label="Back"]').style.display = 'none';
+		})
+	},
+
+	breadcrumb() {
+		console.log(" ⚪ breadcrumb called")
+		let breadcrumb = $(".level-item");
+		
+		this.folders_array.length = 0                             // from Folders sagar3 then array should be empty here 
+		console.log("breadcrumb", breadcrumb[0].innerHTML = "")
+		let html = breadcrumb.html().trim();
+		if (/(&nbsp;|\/)+$/.test(html)) {
+			console.log("✅ Trailing slash found — cleaning it...");
+			html = html.replace(/(&nbsp;|\/)+$/g, ""); // remove last slashes + spaces
+			breadcrumb.html(html);
+		} else {
+			console.log("⚪ No trailing slash found — skipping cleanup");
+		}
+	},
+
+	pagination() {
+		let self = this
+		// $(document).off("click", ".open-folder").on("click", ".open-folder", function (event) {
+		$(document).off("click", ".btn-paging").on("click", ".btn-paging", function () {
+			console.log("✅ btn-paging Clicked");
+			// let limit_page_length = $(this).data("data-length-value");
+			let limit_page_length = $(this).data("length-value");
+			console.log("mapping", limit_page_length)
+			let getfolder =  $('.level-item a').val();
+			console.log("folder that get ",getfolder,"current folder",self.current_folder);
+			let limit_start = 0
+			
+			self.show_media_files(self.current_folder,limit_start, limit_page_length)
+		})
+	},
+
+	BackButton() {
+		if (this.current_folder !== "Home") {
+			this.page.add_inner_button(__('Back'), () => {
+				console.log("✅ Back Clicked");
+				this.Back();
+			});
+		}
+	},
+
+	Back() {
+		// console.log("✅ Back Clicked");
+		console.log("⚪ current_folder was :", this.current_folder);
+
+		let self = this;
+		let currentPath = self.current_folder;
+		let path_list = currentPath.split("/");
+		// console.log("self.current_folder splited :", path_list);
+		console.log("before poped lenth is", path_list.length, path_list);
+
+		if(path_list.length > 2){
+			// if > 2 then it will go in else if not then it will go in else 
+			let popped_element = path_list.pop();
+			let popped_folder = self.folders_array.pop()
+			console.log("popped element :", popped_element,"path_list : ",path_list);
+			console.log("popped array_folder :", popped_folder);
+		}
+		
+		let drive_id = $(".level-item a").last().data("drive-id");
+		let shared = $(".level-item a").last().data("is-shared");
+		let admin = $(".level-item a").last().data("is-admin");
+		let limit_start = 0;
+		let limit_page_length = 20;
+
+		$(".level-item a").last().remove();
+		
+		let breadcrumb = $(".level-item");
+		let html = breadcrumb.html().trim();
+
+		if (/(&nbsp;|\/)+$/.test(html)) {
+			console.log("✅ Trailing slash found — cleaning it...");
+			html = html.replace(/(&nbsp;|\/)+$/g, ""); // remove last slashes + spaces
+			breadcrumb.html(html);
+
+		} else {
+			console.log("⚪ No trailing slash found — skipping cleanup");
+		}
+
+		const folder = path_list.join("/");
+		const url = window.location.pathname.split("/").slice(0, -1).join("/")
+		console.log("url", url, "folder :", folder);
+		if (path_list.length == 2) {
+			// $('.ellipsis').hide();
+			// console.log("if Home in path_list:", path_list, "current folder :", this.current_folder);
+			console.log("folder :",folder);
+			console.log("path_list :",path_list[0]);
+
+			this.current_folder = path_list[0]
+			// console.log("window location", window.location.pathname);
+			// console.log("url", window.location.pathname);
+
+			// console.log("url",url);
+			// console.log("after splited url", url, "folder :", folder);
+			history.pushState({ folder: this.current_folder }, "", url);
+			self.render_template()
+
+		} else {
+			console.log("else not Home and folder:",folder);
+			console.log("after poped lenth is", path_list.length, path_list);
+			console.log("url", url);
+			// let url = window.location.pathname.split("/").slice(0, -1).join("/")
+
+			const folder_array = folder.split("/");
+			const set_title_folder = folder_array[folder_array.length - 1]
+
+			history.pushState({ folder: folder }, "", url);
+			self.page.set_title(__(set_title_folder));
+			self.current_folder = folder;
+
+			this.FolderContent(drive_id, shared,admin, limit_start, limit_page_length)
+		}
+	},
+
 
 	PDFpreview() {
 		let self = this
 		$(document).on("click", ".open-pdf", function (event) {
+			console.log("✅ open-pdf Clicked");
 			event.preventDefault();
 
 			let file_url = $(this).data("file-url");
@@ -5086,6 +5568,7 @@ const MyDriveV3 = {
 	Exelpreview() {
 		let self = this;
 		$(document).on("click", ".open-spreadsheet", function (event) {
+			console.log("✅ open-spreadsheet Clicked");
 			event.preventDefault();
 			let file_url = $(this).data("file-url");
 			let file_id = $(this).data("name");
@@ -5717,131 +6200,7 @@ const MyDriveV3 = {
 
 			});
 		});
-	},
-
-	Home() {
-		let self = this
-		$(document).on("click", ".go-home", function (event) {
-			console.log("home called");
-
-			self.page.set_title(__("Home"));
-			self.current_folder = "Home";
-			self.breadcrumb()
-			// $('.btn .ellipsis').hide();
-			$('.custom-actions .ellipsis').hide();
-
-
-			self.render_template();
-			// self.page.set_title(__('Home'));
-			 // Reset current folder to Home
-			// history.pushState({ folder: "Home" }, "", "/app/my-drive-v2");
-			// document.querySelector('[data-label="Back"]').style.display = 'none';
-		})
-	},
-
-	breadcrumb() {
-		console.log("breadcrumb called")
-		let breadcrumb = $(".level-item");
-		this.folders_array.length = 0                             // from Folders sagar3 then array should be empty here 
-		console.log("breadcrumb", breadcrumb[0].innerHTML = "")
-		let html = breadcrumb.html().trim();
-		if (/(&nbsp;|\/)+$/.test(html)) {
-			console.log("✅ Trailing slash found — cleaning it...");
-			html = html.replace(/(&nbsp;|\/)+$/g, ""); // remove last slashes + spaces
-			breadcrumb.html(html);
-		} else {
-			console.log("⚪ No trailing slash found — skipping cleanup");
-		}
-	},
-
-	pagination() {
-		let self = this
-		// $(document).off("click", ".open-folder").on("click", ".open-folder", function (event) {
-		$(document).off("click", ".btn-paging").on("click", ".btn-paging", function () {
-			// let limit_page_length = $(this).data("data-length-value");
-			let limit_page_length = $(this).data("length-value");
-			console.log("mapping", limit_page_length)
-			let getfolder =  $('.level-item a').val();
-			console.log("folder that get ",getfolder,"current folder",self.current_folder);
-			let limit_start = 0
-			
-			self.show_media_files(self.current_folder,limit_start, limit_page_length)
-		})
-	},
-
-	BackButton() {
-		if (this.current_folder !== "Home") {
-			this.page.add_inner_button(__('Back'), () => {
-				this.Back();
-			});
-		}
-	},
-
-	Back() {
-		let self = this;
-		console.log("Back clicked...current folder was :", this.current_folder);
-		let currentPath = self.current_folder;
-		let path_list = currentPath.split("/");
-		// console.log("self.current_folder splited :", path_list);
-		console.log("before poped lenth is", path_list.length, path_list);
-		let popped_element = path_list.pop();
-		let popped_folder = self.folders_array.pop()
-
-		console.log("popped element :", popped_element);
-		console.log("popped array_folder :", popped_folder);
-
-		let drive_id = $(".level-item a").last().data("drive-id");
-		let shared = $(".level-item a").last().data("is-shared");
-		let limit_start = 0;
-		let limit_page_length = 20;
-
-		$(".level-item a").last().remove();
-		
-		let breadcrumb = $(".level-item");
-		let html = breadcrumb.html().trim();
-
-		if (/(&nbsp;|\/)+$/.test(html)) {
-			console.log("✅ Trailing slash found — cleaning it...");
-			html = html.replace(/(&nbsp;|\/)+$/g, ""); // remove last slashes + spaces
-			breadcrumb.html(html);
-
-		} else {
-			console.log("⚪ No trailing slash found — skipping cleanup");
-		}
-
-		const folder = path_list.join("/");
-		const url = window.location.pathname.split("/").slice(0, -1).join("/")
-		console.log("url", url, "folder :", folder);
-		if (path_list.length == 1) {
-			// $('.ellipsis').hide();
-			console.log("its home :", path_list, "current folder :", this.current_folder);
-			console.log("folder :",folder);
-			this.current_folder = folder
-			console.log("window location", window.location.pathname);
-			console.log("url", window.location.pathname);
-
-			// console.log("url",url);
-			console.log("after splited url", url, "folder :", folder);
-			history.pushState({ folder: this.current_folder }, "", url);
-			self.render_template()
-
-		} else {
-			console.log("else not Home and folder:",folder);
-			console.log("after poped lenth is", path_list.length, path_list);
-			console.log("url", url);
-			// let url = window.location.pathname.split("/").slice(0, -1).join("/")
-
-			const folder_array = folder.split("/");
-			const set_title_folder = folder_array[folder_array.length - 1]
-
-			history.pushState({ folder: folder }, "", url);
-			self.page.set_title(__(set_title_folder));
-			self.current_folder = folder;
-
-			this.FolderContent(drive_id, shared, limit_start, limit_page_length)
-		}
 	}
-
 }
 
 
@@ -5960,12 +6319,11 @@ function copyToClipboard() {
 function emptyState() {
 	$('.custom-actions button[data-label="Delete"]').remove();
 	$('.custom-actions button[data-label="Share"]').remove();
-
+	$('.custom-actions button[data-label="Download"]').remove();
 	$(".frappe-list .result").remove();
 	let fileDisplayArea = document.querySelector(".frappe-list");
 
 	if (fileDisplayArea) {
-
 		fileDisplayArea.innerHTML = `
 			<div class="no-result text-muted flex justify-center align-center" style="">
 				<div class="no-result text-muted flex justify-center align-center">
@@ -5988,4 +6346,107 @@ function emptyState() {
 		`
 	}
 
+}
+
+function No_Files() {
+	$('.custom-actions button[data-label="Delete"]').remove();
+	$('.custom-actions button[data-label="Share"]').remove();
+	$('.custom-actions button[data-label="Download"]').remove();
+	$(".frappe-list .result").remove();
+	let fileDisplayArea = document.querySelector(".frappe-list");
+
+	if (fileDisplayArea) {
+		fileDisplayArea.innerHTML = `
+			<div class="no-result text-muted flex justify-center align-center" style="">
+				<div class="no-result text-muted flex justify-center align-center">
+					<div class="msg-box no-border">
+						<div>
+							<img src="/assets/frappe/images/ui-states/list-empty-state.svg" alt="Generic Empty State" class="null-state" />
+						</div>
+						<p> No Files Found</p>
+						
+					</div>
+				</div>
+			</div>
+		`
+	}
+
+}
+
+function render_toggle() {
+    // check if already exists inside that container
+	console.log("render_toggle called");
+	
+    if (!$(".page-title .flex.title-area .toggle-switch-container").length) {
+
+        var toggle_button = `
+            <div class="toggle-switch-container">
+                <button class="toggle-btn active" data-value="owned">
+                    Owned
+                </button>
+                <button class="toggle-btn" data-value="others">
+                    Others
+                </button>
+            </div>`;
+
+        $(".page-title .flex.title-area").append(toggle_button);
+    }
+}
+
+// function render_toggle2(toggle_value) {
+
+//     // check if already exists inside that container
+// 	console.log("render_toggle called");
+	
+//     if (!$(".page-title .flex.title-area .toggle-switch-container").length) {
+
+// 		if(toggle_value == "others"){
+// 			var toggle_button = `
+// 				<div class="toggle-switch-container">
+// 					<button class="toggle-btn" data-value="owned">
+// 						Owned
+// 					</button>
+// 					<button class="toggle-btn active" data-value="others">
+// 						Others
+// 					</button>
+// 				</div>`;
+
+// 			$(".page-title .flex.title-area").append(toggle_button);
+
+// 		}else{
+
+// 			var toggle_button = `
+//             <div class="toggle-switch-container">
+//                 <button class="toggle-btn active" data-value="owned">
+//                     Owned
+//                 </button>
+//                 <button class="toggle-btn" data-value="others">
+//                     Others
+//                 </button>
+//             </div>`;
+
+//         	$(".page-title .flex.title-area").append(toggle_button);
+
+// 		}
+
+        
+//     }
+// }
+
+function remove_toggle(){
+
+	if ($(".toggle-switch-container").length) {
+		$(".toggle-switch-container").remove();
+		console.log("Toggle container is present");
+		
+	}else{
+		console.log("Toggle container is not present");
+	}
+}
+
+function initializeToggle(owned) {
+	const data_value = owned ? "owned" : "others";
+	$(".toggle-btn").removeClass("active");
+	$(".toggle-btn[data-value='" + data_value + "']").addClass("active");
+	console.log("Initialized toggle to:", data_value);
 }

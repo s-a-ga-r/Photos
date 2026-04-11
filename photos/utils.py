@@ -2,8 +2,9 @@
 # See license.txt
 from collections.abc import Iterable
 from typing import TYPE_CHECKING
-
 import frappe
+from frappe.utils import get_site_path
+
 
 if TYPE_CHECKING:
     from frappe.core.doctype.file.file import File
@@ -121,12 +122,53 @@ def process_file(file: "File", event: str) -> "Photo":
 import os
 from frappe.exceptions import LinkValidationError
 
+
 def create_folder(folder:"File",event:str):
     if event != "after_insert":
         raise NotImplementedError
 
     if not folder.is_folder:
         return
+
+    # creating folder kim
+    print("site path",frappe.get_site_path())
+    print("file url",folder.file_url)
+    print("folder",folder.folder) # Home/kim_wexler
+    print("folder",folder.name)  # Home/kim_wexler/kim
+
+    print("file_name",folder.file_name)
+
+
+    if folder.folder.startswith("Home/"):
+        userbase_folder = folder.folder[len("Home/"):]
+        print("Userbase Folder withou Home/ :",userbase_folder)
+        my_drive_path = frappe.get_site_path(
+            "public", "files", "my-drive",userbase_folder
+        )
+        print("my_drive_path : ",my_drive_path)
+    else:
+        print("else : its is just Home : ",folder.folder)
+        userbase_folder = get_userbase_folder(frappe.session.user)
+        print("userbase_folder",userbase_folder)
+        my_drive_path = frappe.get_site_path(
+            "public", "files", "my-drive",userbase_folder
+        )
+        print("else : my_drive_path : ",my_drive_path)
+        
+    target_folder_path = os.path.join(my_drive_path,folder.file_name)
+    if not os.path.exists(target_folder_path):
+        os.makedirs(target_folder_path)
+        print("New Folder Created with :",target_folder_path)
+
+    # print("is_new",folder.is_new)
+    
+    # full_path = frappe.get_site_path(
+    #     "public", "files", "my-drive",get_userbase_folder(frappe.session.user)
+    # )
+
+    # if not os.path.exists(full_path):
+    #     userbase_folder = os.path.join(full_path,folder.file_name)
+    #     os.makedirs(userbase_folder)
     
     print("folder creating in drive manager from utils ",folder.folder)
     try:
@@ -161,5 +203,11 @@ def create_user(user:"User",event:str):
         return drv_access.save()
     except LinkValidationError:
         frappe.msgprint("Parent folder not found. Cannot create Drive Manager entry.")
-    
-        
+
+
+
+@frappe.whitelist()
+def get_user_folder(user,folder):
+    user_folder = frappe.db.get_value("User", user, "username")
+    user_base_folder = f'{folder}/{user_folder}'
+    return user_base_folder

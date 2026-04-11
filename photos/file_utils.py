@@ -32,17 +32,25 @@ def create_user_folder(user): #frappe.msgprint(str(frappe.db.exists("Drive Acces
                 create_file(username)
             print("ths folder already exist")# frappe.msgprint(str("folder already exist"))
     elif user == "Administrator":
-        usr_flder = "administrator"
-        if not os.path.exists(usr_flder):
-            os.makedirs(usr_flder)
+        administrator = "administrator"
+
+        administrator_folder = frappe.get_site_path(
+            "public", "files", "my-drive", administrator
+        )
+
+
+        if not os.path.exists(administrator_folder):
+            os.makedirs(administrator_folder)
+            create_file(administrator)
+            print("Created Administrator Folder in dir and in File Doc...")
         return
     else:
         frappe.msgprint(str("User Not in Drive Access"))
 
-
 def create_file(username):
     parent_folder = f"Home/{username}"
-    if not frappe.db.exists("File", {"file_name": username, "is_folder": 1,"folder":parent_folder}):
+    if not frappe.db.exists("File", {"file_name": username, "is_folder": 1,"folder":"Home"}):
+        print("really not created in File doctype")
         folder = frappe.get_doc({
             "doctype": "File",
             "file_name": username,
@@ -50,23 +58,14 @@ def create_file(username):
             "folder": "Home"
         })
         folder.insert(ignore_permissions=True)
-
         return folder
+    else:
+        print("file exist in File Doctype dont need to create")
 
-    # if not frappe.db.exists("File", parent_folder):
-    #     parent = frappe.new_doc("File")
-    #     parent.file_name = username
-    #     parent.is_folder = 1
-    #     parent.folder = "Home"
-    #     parent.insert(ignore_permissions=True)
 
-    # file = frappe.new_doc("File")
-    # file.file_name = username
-    # file.is_folder = 1
-    # file.folder = parent_folder
-    # file.insert(ignore_permissions=True, ignore_if_duplicate=True)
 
-    # return file
+
+
 
 
 
@@ -79,8 +78,14 @@ def upload():
     try:
         # Get the uploaded file
         file = frappe.request.files.get('file')
+        
+
         print(  "line no:116 file : ", file)
         if not file:
+            frappe.log_error(
+                title="file line 88", 
+                message=file
+            )
             frappe.throw("No file uploaded")
         
         # Get folder parameter
@@ -91,35 +96,53 @@ def upload():
         site_path = get_site_path()
         print("site_path", site_path)   #./final.clubs
         username = frappe.db.get_value("User",frappe.session.user,"username")
-        user_folder = f"{folder}/{username}"
-        print("username",username)
-        print("user_folder",user_folder)
+
+        if folder.startswith(f"Home/{username}/") or folder == f"Home/{username}":
+            print("Username in in user correctly placed after Home/")
+            user_folder = folder
+        else:
+            # if just Home
+            user_folder = f"{folder}/{username}"
 
         my_drive_path = os.path.join(site_path, 'public', 'files','my-drive',username)
         print("my_drive_path", my_drive_path) # ./final.clubs/public/files/my-drive
         my_drive_base_path = os.path.join(site_path, "public", "files", "my-drive")
 
-
         if not os.path.exists(my_drive_path):
+            print("kim_wexler not created ? creating",my_drive_path)
             os.makedirs(my_drive_path)
         # os.makedirs(my_drive_path, exist_ok=True)
         
         target_folder_path = my_drive_path
-        
+
+        print("username",username)
+        print("user_folder",user_folder)
+        print("folder",folder)
+
         if folder:
             folder_parts = folder.split('/')
             if folder_parts[0].lower() == 'home':
                 folder_parts = folder_parts[1:]
+
+                print("folder_parts",folder_parts) # ['kim_wexler', 'Kim']
+                print("before target_folder_path",target_folder_path)
+
+            target_folder_path_list = target_folder_path.split('/')
+            print("target_folder_path_list",target_folder_path_list)
             
             for folder_part in folder_parts:
                 if folder_part.strip():  # Skip empty parts
-                    target_folder_path = os.path.join(target_folder_path, folder_part.strip())
+                    print("folder_part.strip()",folder_part.strip())
+                    if not folder_part.strip() in target_folder_path_list:
+                        target_folder_path = os.path.join(target_folder_path, folder_part.strip())
+                        print("after target_folder_path",target_folder_path)
+                        print(f"{folder_part.strip()} not in target_folder_path: ",target_folder_path)
                     if not os.path.exists(target_folder_path):
                         os.makedirs(target_folder_path)
                         print(f"Created folder: {target_folder_path}")
         
-        print("target_folder_path", target_folder_path) #./localhub.commit.io/public/files/my-drive/kim_wexler
-        
+        print("saving file to :", target_folder_path) #./localhub.commit.io/public/files/my-drive/kim_wexler
+        print("file_name :", file.filename)
         filename = file.filename
         file_path = os.path.join(target_folder_path, filename)
         
@@ -129,11 +152,17 @@ def upload():
         print("file_path", file_path)
         
         while os.path.exists(file_path):
+            print("Inside the while")
             name, ext = os.path.splitext(original_filename)
+            print("name: ",name,"ext : ",ext)
             filename = f"{name}_{counter}{ext}"
+            print("filename inside the while",filename)
+
             file_path = os.path.join(target_folder_path, filename)
+            print("while file_path : ",file_path)
             counter += 1
-        print("file_path",file_path)
+
+        print("outside the while File_Path",file_path)
         
         # Save the file physically
         file.save(file_path)
@@ -146,7 +175,6 @@ def upload():
 
         print("the folder where file is getting upload ", user_folder)
        
-        
         # Create File document in Frappe
         file_doc = frappe.get_doc({
             "doctype": "File",
@@ -210,10 +238,76 @@ def upload():
                 "uploaded_files":uploaded_files,
                 "folder":folder,
                 "total_uploaded": len(uploaded_files)
-            }    
+            }
     except Exception as e:
-        frappe.log_error(f"File upload error: {str(e)}")
+        # frappe.log_error(f"File upload error: {str(e)}")
         frappe.throw(f"Error uploading file: {str(e)}")
+        frappe.log_error(
+                title="Error uploading file:", 
+                message=e
+            )
+
+
+
+
+
+def get_data_for_admin(keywrd,owner,admin,is_user_folder):
+    if keywrd == "Folders":
+        print("getting data for admin")
+
+        query = """
+            SELECT
+                f.name as file_id,
+                dm.name AS drive_id,
+                dm.attached_to_name,
+                dm.file_name AS filename,
+                dm.created_by,
+                dm.creation,
+                0 as shared,
+                %s as drive_admin
+            FROM
+                `tabDrive Manager` AS dm
+            INNER JOIN
+                `tabFile` AS f ON dm.attached_to_name = f.name
+            WHERE
+                dm.is_folder = %s
+                AND (
+                    dm.created_by != %s
+                    OR dm.is_user_folder != %s
+                )
+            ORDER BY
+                dm.creation DESC
+        """
+        data = frappe.db.sql(query, (admin,1,owner,is_user_folder), as_dict=True)
+        return data
+    elif keywrd == "Documents":
+        print("getting data for admin")
+
+        query = """
+            SELECT
+                dm.name as drive_id,
+                dm.file_name AS filename,
+                dm.created_by,
+                f.name as file_id,
+                f.folder,
+                f.file_type,
+                f.creation,
+                f.is_folder,
+                f.file_url,
+                %s as drive_admin
+
+            FROM
+                `tabDrive Manager` AS dm
+            INNER JOIN
+                `tabFile` AS f ON f.name = dm.attached_to_name
+            WHERE
+                f.file_type IN ('XLSX', 'XLS', 'CSV', 'PDF', 'DOCX', 'DOC', 'TXT')
+            ORDER BY
+                f.creation DESC
+            """
+
+        data = frappe.db.sql(query, (admin), as_dict=True)
+        return data
 
 
 

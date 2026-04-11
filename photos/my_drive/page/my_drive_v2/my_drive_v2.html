@@ -41,37 +41,57 @@
                         </ul>
                     </div>
 
-                    <ul class="folder-list" id="folder-list"  style="padding: 0"><li></li></ul>
+                    <!-- <div class="filter1">
+                      
+                        <select type="text" autocomplete="off" class="input-with-feedback form-control input-xs ellipsis" maxlength="1000" data-fieldtype="Select" data-fieldname="enabled" placeholder="">
+                            <option value="Yes">Owned</option>
+                            <option value="No">Others</option>
+                        </select>
+                    </div> -->
 
-                    <h5 class="go-home"><i class="fa fa-home me-2 icon-large"></i>Home</h5>
+                    <!-- HTML Structure -->
+                    <!-- <div class="toggle-switch-container">
+                        <button class="toggle-btn active" data-value="owned">
+                            Owned
+                        </button>
+                        <button class="toggle-btn" data-value="others">
+                            Others
+                        </button>
+                    </div> -->
 
-                    <ul class="folder-list" id="folder-list"  style="padding: 0"><li></li></ul>
 
-                        <h5 class="shared-file open-media" data-media-files="Media"><i class="fa fa-film fa-sm"></i> Media</h5>
+                    <div class="siderbar-options">
+                        <ul class="folder-list" id="folder-list"  style="padding: 0"><li></li></ul>
 
-                    <ul class="folder-list" id="folder-list"  style="padding: 0"><li></li></ul>
+                        <h5 class="go-home"><i class="fa fa-home me-2 icon-large"></i>Home</h5>
 
-                        <h5 class="go-folders"> <i class="fa fa-archive"></i>Folders</h5>
+                        <ul class="folder-list" id="folder-list"  style="padding: 0"><li></li></ul>
 
-                    <ul class="folder-list" id="folder-list"  style="padding: 0"><li></li></ul>
+                            <h5 class="shared-file open-media" data-media-files="Media"><i class="fa fa-film fa-sm"></i> Media</h5>
+
+                        <ul class="folder-list" id="folder-list"  style="padding: 0"><li></li></ul>
+
+                            <h5 class="go-folders"> <i class="fa fa-archive"></i>Folders</h5>
+
+                        <ul class="folder-list" id="folder-list"  style="padding: 0"><li></li></ul>
+                            
+                            <h5 class="shared-file open-shared" data-shared-files="Shared"><i class="fa fa-share-alt icon-large2"></i>Shared </h5>
+
+                        <ul class="folder-list" id="folder-list"  style="padding: 0"><li></li></ul>
                         
-                        <h5 class="shared-file open-shared" data-shared-files="Shared"><i class="fa fa-share-alt icon-large2"></i>Shared </h5>
+                            <h5 class="open-documents" data-documents-files="Documents"><i class="fa fa-file icon-large2"></i>Documents</h5>
 
-                    <ul class="folder-list" id="folder-list"  style="padding: 0"><li></li></ul>
-                    
-                        <h5 class="open-documents" data-documents-files="Documents"><i class="fa fa-file icon-large2"></i>Documents</h5>
+                        <ul class="folder-list" id="folder-list"  style="padding: 0"><li></li></ul>
+                        
+                            <h5 class="open-notifications"><i class="fa fa-envelope"></i>Notifications</h5>
 
-                    <ul class="folder-list" id="folder-list"  style="padding: 0"><li></li></ul>
-                    
-                        <h5 class="open-notifications"><i class="fa fa-envelope"></i>Notifications</h5>
-
-                    <ul class="folder-list" id="folder-list"  style="padding: 0"><li></li></ul>
+                        <ul class="folder-list" id="folder-list"  style="padding: 0"><li></li></ul>
+                    </div>
                 </div>
             </div>  
         </ul> 
     </div>
 </div>
-
 
 <div class="col layout-main-section-wrapper file-view">
     <div class="layout-main-section frappe-card">
@@ -86,13 +106,14 @@
             </div>
 
             <div class="filter-section flex">
+
                 <div class="filter-selector">
                     <div class="dropdown-search">
-                        <input type="text" placeholder="Search" data-element="search" class="form-control input-xs">      
-                        
+                        <input type="text" placeholder="Search" data-element="search" class="form-control input-xs">
                     </div>    
                 </div>
-            </div>            
+
+            </div>
         </div>
 
         <div class="frappe-list">
@@ -103,7 +124,7 @@
                         {% if folder.is_folder %}
                             <div class="file">
                                 <div class="file-header">
-                                    <input class="level-item checkbox hidden-xs" type="checkbox" data-file-id="{{folder.file_id}}" data-docname={{folder.drive_id}}>
+                                    <input class="level-item checkbox hidden-xs" type="checkbox" data-file-id="{{folder.file_id}}" data-drive-id={{folder.drive_id}} data-is-admin={{folder.drive_admin}}>
                                 </div>
                                 {% if folder.shared %}
                                     <div class="shared-badge">
@@ -133,7 +154,7 @@
                         {% if file.file_type == "PDF"%}
                                 <div class="file">
                                     <div class="file-header">
-                                            <input class="level-item checkbox hidden-xs" type="checkbox" data-file-id={{file.file_id}} data-docname={{file.drive_id}}>
+                                            <input class="level-item checkbox hidden-xs" type="checkbox" data-file-id={{file.file_id}} data-drive-id={{file.drive_id}}  data-is-admin={{file.drive_admin}}>
                                     </div>
                                     {% if file.shared %}
                                         <div class="shared-badge">
@@ -141,7 +162,7 @@
                                             <!-- <img alt="File Icon" class="icon" src="/assets/photos/shared.png"> -->
                                         </div>
                                     {% endif %}
-                                    <a href="#" class="open-pdf" data-file-url="{{ file.file_url }}" data-name={{file.file_id}}>
+                                    <a href="#" class="open-pdf" data-file-url="{{ file.file_url }}" data-file-id={{file.file_id}} data-drive-id={{file.drive_id}}>
                                         <span class="corner"></span>
 
                                         <div class="file-body">
@@ -158,7 +179,7 @@
                             {% if file.file_type == "XLSX" || file.file_type == "CSV" %}
                                     <div class="file">
                                         <div class="file-header">
-                                            <input class="level-item checkbox hidden-xs" type="checkbox" data-file-id={{file.file_id}} data-docname={{file.drive_id}}>
+                                            <input class="level-item checkbox hidden-xs" type="checkbox" data-file-id={{file.file_id}} data-drive-id={{file.drive_id}} data-is-admin={{file.drive_admin}}>
                                         </div>
                                          {% if file.shared %}
                                                 <div class="shared-badge">
@@ -166,7 +187,7 @@
                                                     <!-- <img alt="File Icon" class="icon" src="/assets/photos/shared.png"> -->
                                                 </div>
                                             {% endif %}
-                                        <a href="#" class="open-spreadsheet" data-file-url="{{ file.file_url }}" data-name={{file.file_id}}>
+                                        <a href="#" class="open-spreadsheet" data-file-url="{{ file.file_url }}" data-file-id={{file.file_id}} data-drive-id={{file.drive_id}}>
                                             <span class="corner"></span>
                                             <div class="file-body">
                                                 <img alt="File Icon" style="width: 75px; height: 90px" class="icon" src="/assets/photos/xls.png">
@@ -183,7 +204,7 @@
                                 {% if file.file_type == "JPG" || file.file_type == "JPEG" || file.file_type == "PNG" %}
                                         <div class="file">
                                             <div class="file-header">
-                                                    <input class="level-item checkbox hidden-xs" type="checkbox" data-file-id={{file.file_id}} data-docname={{file.drive_id}}>
+                                                    <input class="level-item checkbox hidden-xs" type="checkbox" data-file-id={{file.file_id}} data-drive-id={{file.drive_id}} data-is-admin={{file.drive_admin}}>
                                             </div>
                                             {% if file.shared %}
                                                 <div class="shared-badge">
@@ -210,10 +231,10 @@
                                     {% if file.file_type == "MPV" %}
                                         <div class="file">
                                             <div class="file-header">
-                                                <input class="level-item checkbox hidden-xs" type="checkbox" data-file-id="{{ file.file_id }}" data-docname="{{ file.drive_id }}">
+                                                <input class="level-item checkbox hidden-xs" type="checkbox" data-file-id="{{ file.file_id }}" data-drive-id="{{ file.drive_id }}">
                                             </div>
 
-                                            <a href="#" class="video-preview" data-file-url="{{ file.file_url }}" data-file-id="{{ file.file_id }}" data-drive-id="{{ file.drive_id }}">
+                                            <a href="#" class="video-preview" data-file-url="{{ file.file_url }}" data-file-id="{{ file.file_id }}" data-drive-id="{{ file.drive_id}}">
 
                                                 <!-- <div class="video-thumb">
                                                     <video width="100%" height="140" muted>
@@ -235,7 +256,6 @@
                                         </div>
 
                                     {% endif %}
-
                                 {% endif %}
                             {% endif %}
                         {% endif %}

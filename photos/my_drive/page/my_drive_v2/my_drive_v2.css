@@ -154,6 +154,51 @@ body[data-route="my-drive-v2"] .page-head {
     margin-bottom: 5px;
 }
 
+/* .form-control{
+  padding:0px !important;
+} */
+
+
+/* CSS Styling */
+.toggle-switch-container {
+  display: inline-flex;
+  background-color: #3a3a3a;
+  border-radius: 50px;
+  padding: 4px;
+  gap: 0;
+  width: fit-content;
+}
+
+
+.toggle-btn {
+  padding: 2px 7px;
+  border: none;
+  border-radius: 50px;
+  background-color: transparent;
+  color: #45dd16;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.toggle-btn.active {
+  background-color: #43c931;
+  color: #000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+.toggle-btn:not(.active) {
+  color: #ffffff;
+}
+.toggle-btn:hover:not(.active) {
+  color: #ffffff;
+}
+
+.siderbar-options{
+  padding: 10px;
+}
+
 .label {
   display: inline;
   padding: .2em .6em .3em;
@@ -174,7 +219,7 @@ body[data-route="my-drive-v2"] .page-head {
   .user-info {
       margin-bottom: 0;
       border-bottom: none;
-      padding: 30px;
+      padding: 10px;
       padding-top: 15px;
       padding-bottom: 50px;
   }
@@ -185,6 +230,19 @@ body[data-route="my-drive-v2"] .page-head {
    .user-info .label {
       /* margin-left:-27px; */
       margin-left: 0; 
+  }
+
+  .filter1{
+    padding: 10px;
+    padding-bottom: 40px;
+  }
+
+  .filter1 select.form-control.ellipsis{
+    padding-left: 10px;
+  }
+
+  .sidebar-options{
+    padding: 10px;
   }
   
 }
@@ -233,6 +291,11 @@ body[data-route="my-drive-v2"] .page-head {
 .user-box h5.tag-title {
     margin-top: 20px;
 }
+
+/* .filter1 {
+  margin-top: 20px;
+
+} */
 
 
 

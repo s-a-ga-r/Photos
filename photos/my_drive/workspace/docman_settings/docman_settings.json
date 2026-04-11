@@ -112,7 +112,7 @@
    "type": "Link"
   }
  ],
- "modified": "2026-01-26 19:27:36.344073",
+ "modified": "2026-04-09 16:42:31.232355",
  "modified_by": "Administrator",
  "module": "My Drive",
  "name": "DocMan Settings",
@@ -122,7 +122,7 @@
  "public": 1,
  "quick_lists": [],
  "roles": [],
- "sequence_id": 4.0,
+ "sequence_id": 5.0,
  "shortcuts": [],
  "title": "DocMan Settings"
 }

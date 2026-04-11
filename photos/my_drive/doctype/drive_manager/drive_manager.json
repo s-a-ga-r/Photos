@@ -76,13 +76,14 @@
    "default": "0",
    "fieldname": "is_user_folder",
    "fieldtype": "Check",
+   "in_list_view": 1,
    "label": "is_user_folder"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-03-04 14:53:03.331156",
- "modified_by": "sagarpatil.powerit@gmail.com",
+ "modified": "2026-03-20 17:36:47.399838",
+ "modified_by": "Administrator",
  "module": "My Drive",
  "name": "Drive Manager",
  "owner": "Administrator",
